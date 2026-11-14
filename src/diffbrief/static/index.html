@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>diffbrief</title>
+<style>
+  :root {
+    --paper: #f7f5ef;
+    --ink: #16181d;
+    --muted: #5d636f;
+    --line: #d8d3c7;
+    --fail: #b3301f;
+    --warn: #8a5a00;
+    --note: #35506b;
+    --card: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.55 "Iowan Old Style", "Songti SC", Georgia, serif;
+  }
+  main { max-width: 62rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 .3rem; letter-spacing: .01em; }
+  .sub { color: var(--muted); margin: 0 0 1.6rem; }
+  .chips { display: flex; gap: .5rem; flex-wrap: wrap; margin: 0 0 1.4rem; }
+  .chip {
+    border: 1px solid var(--line); background: var(--card); border-radius: 999px;
+    padding: .2rem .7rem; font-size: .85rem; color: var(--muted);
+  }
+  .chip b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .file { border-top: 1px solid var(--line); padding: 1rem 0 .6rem; }
+  .file h2 { font: 600 .95rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0 0 .5rem; word-break: break-all; }
+  ol { margin: 0; padding: 0; list-style: none; }
+  li { display: grid; grid-template-columns: 4.5rem 1fr; gap: .8rem; padding: .35rem 0; }
+  .sev { font: 700 .75rem/1.9 ui-monospace, Menlo, monospace; text-transform: uppercase; }
+  .sev.fail { color: var(--fail); }
+  .sev.warn { color: var(--warn); }
+  .sev.note { color: var(--note); }
+  .msg { min-width: 0; }
+  .rule { font-family: ui-monospace, Menlo, monospace; font-size: .8rem; color: var(--muted); margin-left: .5rem; }
+  .evidence {
+    display: block; margin-top: .15rem; font: .82rem/1.4 ui-monospace, Menlo, monospace;
+    color: var(--muted); background: var(--card); border-left: 2px solid var(--line);
+    padding: .1rem .5rem; overflow-wrap: anywhere;
+  }
+  .empty { color: var(--muted); }
+  footer { border-top: 1px solid var(--line); margin-top: 2rem; padding-top: .8rem; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>diffbrief</h1>
+  <p class="sub">这份报告只在你本机生成：读的是 <code>git diff</code> 的输出，不联网、不上传。</p>
+  <div class="chips" id="chips"></div>
+  <div id="list"></div>
+  <footer id="foot"></footer>
+</main>
+<script>
+const chips = document.getElementById("chips");
+const list = document.getElementById("list");
+const foot = document.getElementById("foot");
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[ch]));
+}
+
+function draw(data) {
+  const totals = data.totals || {};
+  chips.innerHTML = [
+    `<span class="chip">文件 <b>${data.files}</b></span>`,
+    `<span class="chip">改动行 <b>${data.changed_lines}</b></span>`,
+    `<span class="chip">fail <b>${totals.fail || 0}</b></span>`,
+    `<span class="chip">warn <b>${totals.warn || 0}</b></span>`,
+    `<span class="chip">note <b>${totals.note || 0}</b></span>`,
+  ].join("");
+  if (!data.findings || !data.findings.length) {
+    list.innerHTML = `<p class="empty">干净：没有值得停下来看的行。</p>`;
+  } else {
+    const byFile = new Map();
+    for (const finding of data.findings) {
+      if (!byFile.has(finding.path)) byFile.set(finding.path, []);
+      byFile.get(finding.path).push(finding);
+    }
+    let html = "";
+    for (const [path, findings] of byFile) {
+      html += `<section class="file"><h2>${esc(path)}</h2><ol>`;
+      for (const finding of findings) {
+        const where = finding.line ? `${esc(path)}:${finding.line}` : "";
+        html += `<li><span class="sev ${esc(finding.severity)}">${esc(finding.severity)}</span>`
+             +  `<span class="msg">${esc(finding.message)}`
+             +  `<span class="rule">${esc(finding.rule)}${where ? " · " + where : ""}</span>`
+             +  (finding.evidence ? `<span class="evidence">${esc(finding.evidence)}</span>` : "")
+             +  `</span></li>`;
+      }
+      html += "</ol></section>";
+    }
+    list.innerHTML = html;
+  }
+  foot.textContent = `对照 ${data.base} · 仓库 ${data.root}`;
+}
+
+async function poll() {
+  try {
+    const response = await fetch("/api/report", { cache: "no-store" });
+    const data = await response.json();
+    if (data.error) {
+      list.innerHTML = `<p class="empty">${esc(data.error)}</p>`;
+      foot.textContent = "";
+      return;
+    }
+    draw(data);
+  } catch (error) {
+    list.innerHTML = `<p class="empty">读不到报告：${esc(error)}</p>`;
+  }
+}
+
+poll();
+setInterval(poll, 5000);
+</script>
+</body>
+</html>

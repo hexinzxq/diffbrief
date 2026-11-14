@@ -1,0 +1,109 @@
+"""Every rule must fire on the shape it claims and stay quiet otherwise."""
+import unittest
+
+from diffbrief.diff import FileDiff, Hunk, Line, parse
+from diffbrief.rules import look
+
+
+def added_file(path: str, *texts: str, removed: int = 0) -> FileDiff:
+    hunk = Hunk(1, 1 + removed, 1, 1 + len(texts), "")
+    hunk.lines = [Line("+", text, index + 1, None) for index, text in enumerate(texts)]
+    hunk.lines[:0] = [Line("-", f"gone {i}", None, i + 1) for i in range(removed)]
+    file = FileDiff(path=path)
+    file.hunks.append(hunk)
+    return file
+
+
+def rules(findings: list) -> list[str]:
+    """Rule ids, minus the file-level `tests-missing` (it has its own tests).
+
+    Every fixture here is a lone non-test file, so `tests-missing` would ride
+    along on all of them and drown the rule under test.
+    """
+    return [finding.rule for finding in findings if finding.rule != "tests-missing"]
+
+
+def all_rules(findings: list) -> list[str]:
+    return [finding.rule for finding in findings]
+
+
+class SecretTests(unittest.TestCase):
+    def test_a_named_key_assignment_is_a_fail(self) -> None:
+        findings = look([added_file("config.py", 'API_KEY = "abcdefghijklmnop"')])
+        self.assertEqual(rules(findings), ["secret-literal"])
+        self.assertEqual(findings[0].severity, "fail")
+        self.assertNotIn("abcdefghijklmnop", findings[0].evidence)  # masked
+
+    def test_known_key_shapes_are_caught_too(self) -> None:
+        for literal in ('token = "ghp_' + "a" * 30 + '"', 'x = "sk-' + "b" * 30 + '"',
+                        'aws = "AKIA1234567890ABCDEF"'):
+            with self.subTest(literal=literal):
+                self.assertEqual(rules(look([added_file("a.py", literal)])), ["secret-literal"])
+
+    def test_a_removed_secret_is_not_a_new_one(self) -> None:
+        file = FileDiff(path="a.py")
+        hunk = Hunk(1, 1, 1, 1, "")
+        hunk.lines = [Line("-", 'API_KEY = "abcdefghijklmnop"', None, 1)]
+        file.hunks.append(hunk)
+        self.assertEqual(rules(look([file])), [])
+
+
+class DebugTests(unittest.TestCase):
+    def test_console_log_and_pdb_are_warnings(self) -> None:
+        findings = look([added_file("a.js", "console.log(x);"), added_file("b.py", "pdb.set_trace()")])
+        self.assertEqual(rules(findings), ["debug-statement", "debug-statement"])
+        self.assertTrue(all(finding.severity == "warn" for finding in findings))
+
+    def test_a_word_that_merely_contains_log_is_quiet(self) -> None:
+        self.assertEqual(rules(look([added_file("a.js", "logger.info(x);")])), [])
+
+
+class TodoTests(unittest.TestCase):
+    def test_a_new_todo_is_a_note(self) -> None:
+        findings = look([added_file("a.py", "# TODO: handle the empty case")])
+        self.assertEqual(rules(findings), ["todo-added"])
+        todo = [finding for finding in findings if finding.rule == "todo-added"][0]
+        self.assertEqual(todo.severity, "note")
+
+
+class ShapeTests(unittest.TestCase):
+    def test_a_huge_deletion_is_flagged_but_a_lockfile_is_not(self) -> None:
+        findings = look([added_file("src/big.py", "still here", removed=40),
+                         added_file("package-lock.json", "x", removed=40)])
+        self.assertEqual(rules(findings), ["large-deletion"])
+
+    def test_lockfile_churn_is_a_note_not_a_deletion(self) -> None:
+        file = added_file("yarn.lock", *[f"entry {i}" for i in range(210)])
+        self.assertEqual(rules(look([file])), ["lockfile-churn"])
+
+    def test_code_without_a_test_change_is_one_warning(self) -> None:
+        findings = look([added_file("src/a.py", "x = 1"), added_file("src/b.py", "y = 2")])
+        self.assertEqual(all_rules(findings), ["tests-missing"])
+        self.assertEqual(findings[0].path, "src/a.py")  # the biggest changed file
+
+    def test_a_test_change_satisfies_it(self) -> None:
+        findings = look([added_file("src/a.py", "x = 1"),
+                         added_file("tests/test_a.py", "def test_it(): pass")])
+        self.assertEqual(all_rules(findings), [])
+
+    def test_worst_findings_sort_first(self) -> None:
+        findings = look([added_file("a.py", "# TODO x"),
+                         added_file("b.py", 'API_KEY = "abcdefghijklmnop"')])
+        # fail first, then the file-level warn, then the note
+        self.assertEqual([finding.severity for finding in findings], ["fail", "warn", "note"])
+
+
+class ParseThenLookTests(unittest.TestCase):
+    def test_a_real_diff_text_feeds_the_rules(self) -> None:
+        text = '''diff --git a/app.py b/app.py
+--- a/app.py
++++ b/app.py
+@@ -1,1 +1,2 @@
+ x = 1
++pdb.set_trace()
+'''
+        self.assertEqual(rules(look(parse(text))), ["debug-statement"])
+
+
+if __name__ == "__main__":
+    unittest.main()
