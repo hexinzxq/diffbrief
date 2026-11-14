@@ -3,6 +3,7 @@ import io
 import contextlib
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -86,6 +87,14 @@ class ExitCodeTests(RepoCase):
         code, out = run("-C", str(self.repo))
         self.assertEqual(code, 0)
         self.assertIn("todo-added", out)
+
+    def test_the_module_entry_point_is_the_same_command(self) -> None:
+        # README says `PYTHONPATH=src python -m diffbrief` works without an
+        # install; a package without __main__ silently breaks that promise.
+        done = subprocess.run([sys.executable, "-m", "diffbrief", "--help"],
+                              capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("unpushed diff", done.stdout)
 
 
 if __name__ == "__main__":
