@@ -106,6 +106,21 @@ class ExitCodeTests(RepoCase):
         code, out = run("-C", str(self.repo), "--staged", "--json")
         self.assertEqual(json.loads(out)["base"], "the index")
 
+    def test_exclude_drops_globs_and_says_how_many(self) -> None:
+        vendor = self.repo / "vendor"
+        vendor.mkdir()
+        (vendor / "lib.py").write_text('API_KEY = "abcdefghijklmnopq"\n')
+        git("add", ".", cwd=self.repo)
+        code, out = run("-C", str(self.repo), "--staged")
+        self.assertEqual(code, 1)
+        code, out = run("-C", str(self.repo), "--staged", "--exclude", "vendor/*")
+        self.assertEqual(code, 0)
+        self.assertIn("(1 file(s) skipped by --exclude)", out)
+        code, out = run("-C", str(self.repo), "--staged", "--exclude", "vendor/*", "--json")
+        payload = json.loads(out)
+        self.assertEqual(payload["excluded"], 1)
+        self.assertEqual(payload["files"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,13 +5,14 @@ from .diff import FileDiff
 from .rules import ORDER, Finding, look
 
 
-def build(files: list[FileDiff], root: str, base: str) -> dict:
+def build(files: list[FileDiff], root: str, base: str, excluded: int = 0) -> dict:
     findings = look(files)
     totals = {name: sum(1 for finding in findings if finding.severity == name) for name in ORDER}
     return {
         "root": root,
         "base": base,
         "files": len(files),
+        "excluded": excluded,
         "changed_lines": sum(file.changed() for file in files),
         "findings": [finding.as_json() for finding in findings],
         "totals": totals,
@@ -40,7 +41,10 @@ def render(data: dict) -> str:
         lines.append("clean — nothing worth flagging")
     totals = data["totals"]
     lines.append("")
-    lines.append(f"{data['files']} file(s), {data['changed_lines']} changed line(s) "
-                 f"against {data['base']} — {totals['fail']} fail, "
-                 f"{totals['warn']} warn, {totals['note']} note")
+    summary = (f"{data['files']} file(s), {data['changed_lines']} changed line(s) "
+               f"against {data['base']} — {totals['fail']} fail, "
+               f"{totals['warn']} warn, {totals['note']} note")
+    if data.get("excluded"):
+        summary += f" ({data['excluded']} file(s) skipped by --exclude)"
+    lines.append(summary)
     return "\n".join(lines)

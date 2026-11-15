@@ -10,7 +10,7 @@ import json
 import sys
 from pathlib import Path
 
-from .diff import GitError, read_diff, repo_root, resolve_base
+from .diff import GitError, excluded, read_diff, repo_root, resolve_base
 from .report import build, render, worst
 from .server import serve
 
@@ -24,6 +24,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="any path inside the repository")
     parser.add_argument("--base", metavar="REF",
                         help="diff against REF (default: the upstream, else HEAD)")
+    parser.add_argument("--exclude", action="append", default=[], metavar="GLOB",
+                        help="skip files whose path matches this glob (repeatable)")
     parser.add_argument("--staged", action="store_true",
                         help="read the index instead of the unpushed commits")
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
@@ -35,7 +37,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         root = repo_root(Path(args.root).resolve())
         if args.serve:
-            httpd = serve(root, args.base, args.staged, args.host, args.port)
+            httpd = serve(root, args.base, args.staged, args.host, args.port,
+                          tuple(args.exclude))
             print(f"diffbrief  http://{args.host}:{httpd.server_address[1]}  ({root})",
                   flush=True)
             print("ctrl-c to stop", flush=True)
@@ -49,7 +52,10 @@ def main(argv: list[str] | None = None) -> int:
         # Label what was actually read: --staged diffs the index, and calling
         # that "against @{upstream}" is the kind of label that hides a mistake.
         resolved = "the index" if args.staged else resolve_base(root, args.base)
-        data = build(read_diff(root, args.base, args.staged), str(root), resolved)
+        all_files = read_diff(root, args.base, args.staged)
+        files = [file for file in all_files
+                 if not excluded(file.path, tuple(args.exclude))]
+        data = build(files, str(root), resolved, excluded=len(all_files) - len(files))
     except GitError as error:
         print(f"diffbrief: {error}", file=sys.stderr)
         return 2

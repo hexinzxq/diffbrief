@@ -10,17 +10,20 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .diff import read_diff, repo_root, resolve_base
+from .diff import excluded, read_diff, repo_root, resolve_base
 from .report import build
 
 STATIC = Path(__file__).parent / "static"
 INDEX = STATIC / "index.html"
 
 
-def make_handler(root: Path, base: str | None = None, staged: bool = False):
+def make_handler(root: Path, base: str | None = None, staged: bool = False,
+                 exclude: tuple[str, ...] = ()):
     def payload() -> dict:
         resolved = "the index" if staged else resolve_base(root, base)
-        return build(read_diff(root, base, staged), str(root), resolved)
+        all_files = read_diff(root, base, staged)
+        files = [file for file in all_files if not excluded(file.path, exclude)]
+        return build(files, str(root), resolved, excluded=len(all_files) - len(files))
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "diffbrief/0.1"
@@ -62,7 +65,8 @@ def make_handler(root: Path, base: str | None = None, staged: bool = False):
 
 
 def serve(root: Path, base: str | None = None, staged: bool = False,
-          host: str = "127.0.0.1", port: int = 8765) -> ThreadingHTTPServer:
+          host: str = "127.0.0.1", port: int = 8765,
+          exclude: tuple[str, ...] = ()) -> ThreadingHTTPServer:
     return ThreadingHTTPServer((host, port), make_handler(root, base, staged))
 
 

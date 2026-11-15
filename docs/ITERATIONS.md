@@ -14,3 +14,9 @@
 - **改了什么**：`--staged` 时把报告里的 `base` 标成 `the index`（CLI 与 `/api/report` 一致），不再借 `resolve_base()` 返回的 upstream/HEAD 名字。新增用例：暂存一条改动后 `--staged` 必须写 `against the index`、不能写 `against HEAD`，`--json` 的 `base` 也是 `the index`。
 - **为什么**：真跑出来的——`diffbrief --staged` 的输出末尾写着「1 file(s), 3 changed line(s) against HEAD」，可它读的是索引；`base` 字段同样撒谎。这种标签错了不报错，只会让人以为「我明明只暂存了一个文件，怎么 HEAD 也变了」。工具可以不知道答案，但不能把答案写错。
 - **验证**：27 个测试全过；把这一行还原成 `resolve_base(...)` 单跑新用例立刻失败（0.15s），改回来才过；真仓库上现在写 `against the index`。
+
+### #2 `--exclude GLOB`：不该看的文件，要跳得掉，也要说跳了
+
+- **改了什么**：`--exclude GLOB`（可重复，`fnmatch` 匹配 git 打印的路径）；`diff.read_diff()` 与 `server.make_handler()` 都接受 `exclude`，`--serve` 也生效；被跳过的数量进 JSON 的 `excluded`，终端总结行写 `(N file(s) skipped by --exclude)`——**跳过必须说出来**，不能静默少几个文件。新增用例：带 `vendor/lib.py` 的密钥改动，不排除 exit 1，`--exclude 'vendor/*'` exit 0 且 JSON `excluded == 1`、`files == 0`。
+- **为什么**：真跑出来的——把 20 个第三方 skill 导进 `skillforge/vendor/` 的那一刻，`diffbrief --base f33cd59~1` 报 `2 fail, 2 warn, 4 note`，全部落在 vendored 的 `evals.json` 里（`TODO` 示例、`console.log` 片段），这个仓库的主人一行都改不了。看板如果在这种地方吵，用户第三次就会加 `2>/dev/null`。
+- **验证**：28 个测试全过；同一段真实历史加 `--exclude 'vendor/*'` 后 `26 file(s), 3629 changed line(s) — 0 fail, 0 warn, 0 note (77 file(s) skipped by --exclude)`；README 用法与待办同步改写。

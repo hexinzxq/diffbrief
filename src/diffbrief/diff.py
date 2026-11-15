@@ -5,6 +5,8 @@ and their line numbers in the new file, and nothing else.
 """
 from __future__ import annotations
 
+import fnmatch
+
 import re
 import subprocess
 from dataclasses import dataclass, field
@@ -160,8 +162,18 @@ def resolve_base(root: Path, base: str | None) -> str:
     return "@{upstream}" if done.returncode == 0 else "HEAD"
 
 
+def excluded(path: str, patterns: tuple[str, ...]) -> bool:
+    """Whether a path matches one of the --exclude globs.
+
+    fnmatch on the path as git prints it: patterns are about what you can see in
+    the diff, not about where the file resolves on disk.
+    """
+    return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
+
+
 def read_diff(root: Path, base: str | None = None, staged: bool = False,
-              paths: list[str] | None = None) -> list[FileDiff]:
+              paths: list[str] | None = None,
+              exclude: tuple[str, ...] = ()) -> list[FileDiff]:
     args = ["diff", "--no-color", "--find-renames", "--unified=3"]
     if staged:
         args.append("--cached")
@@ -169,4 +181,7 @@ def read_diff(root: Path, base: str | None = None, staged: bool = False,
         args.append(resolve_base(root, base))
     if paths:
         args.extend(["--", *paths])
-    return parse(_git(args, root))
+    files = parse(_git(args, root))
+    if not exclude:
+        return files
+    return [file for file in files if not excluded(file.path, exclude)]
