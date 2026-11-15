@@ -96,6 +96,16 @@ class ExitCodeTests(RepoCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn("unpushed diff", done.stdout)
 
+    def test_staged_says_it_read_the_index_not_the_upstream(self) -> None:
+        (self.repo / "app.py").write_text("x = 1\ny = 2\n")
+        git("add", ".", cwd=self.repo)
+        code, out = run("-C", str(self.repo), "--staged")
+        self.assertEqual(code, 0)
+        self.assertIn("against the index", out)
+        self.assertNotIn("against HEAD", out)
+        code, out = run("-C", str(self.repo), "--staged", "--json")
+        self.assertEqual(json.loads(out)["base"], "the index")
+
 
 if __name__ == "__main__":
     unittest.main()

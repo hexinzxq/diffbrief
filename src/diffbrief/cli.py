@@ -46,7 +46,9 @@ def main(argv: list[str] | None = None) -> int:
             finally:
                 httpd.server_close()
             return 0
-        resolved = resolve_base(root, args.base)
+        # Label what was actually read: --staged diffs the index, and calling
+        # that "against @{upstream}" is the kind of label that hides a mistake.
+        resolved = "the index" if args.staged else resolve_base(root, args.base)
         data = build(read_diff(root, args.base, args.staged), str(root), resolved)
     except GitError as error:
         print(f"diffbrief: {error}", file=sys.stderr)

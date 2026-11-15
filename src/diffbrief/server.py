@@ -19,7 +19,7 @@ INDEX = STATIC / "index.html"
 
 def make_handler(root: Path, base: str | None = None, staged: bool = False):
     def payload() -> dict:
-        resolved = resolve_base(root, base)
+        resolved = "the index" if staged else resolve_base(root, base)
         return build(read_diff(root, base, staged), str(root), resolved)
 
     class Handler(BaseHTTPRequestHandler):
