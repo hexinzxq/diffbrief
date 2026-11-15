@@ -33,3 +33,9 @@
 - **为什么**：工具的口号是「push 之前看一眼」，可没有任何东西逼你看一眼；钩子是把这个口号接上线的最小零件。
 - **顺手抓到的真洞**：在演示钩子时，一个从来没 `-u` 推过的分支（只有 `git push origin main`）**钩子放行了一个带 `ghp_…` token 的提交**——`resolve_base()` 没 upstream 就退回 `HEAD`，而 `HEAD` 跟自己永远没差，于是报告「no changes against HEAD — nothing to read」。`resolve_base()` 改成三级：显式 `--base` → `@{upstream}` → 存在同名远程跟踪分支时用 `origin/<branch>` → 最后才 `HEAD`。这才是「你即将推出去的东西」。
 - **验证**：35 个测试全过；新用例（无 upstream + 裸远端 + 新提交里的密钥）在没有 fallback 时必须失败——实测还原后 0.29 秒失败；真仓库里装钩子后推一个 `PASSWORD = "…"` 的提交，钩子输出 `1 file(s), 1 changed line(s) against origin/main — 1 fail`，push 被拒，远端 ref 没动。
+
+### #5 调试语句只在会运行的文件里才算「留下的调试输出」
+
+- **改了什么**：`debug-statement` 加一层 `EXECUTABLE` 门（py/js/ts/go/rs/…/sh/vue/svelte 这些能跑起来的扩展名）；`.md`、`.json` 里引用 `console.log(x)` 不再报。新增两条用例（代码里报、文档代码块里不报）。
+- **为什么**：真跑出来的——`skillforge --base f33cd59~1`（那次把 20 个第三方 skill 导进 `vendor/`）报 `2 warn`，两条都在 `references/REFERENCE.md` 的代码块里，是文档在**举例**说明 `console.log` 怎么用。没人会把调试输出「留在」一个 markdown 文件里；这条规则原本是在猜文件会不会被执行，猜错了就变成噪音。
+- **验证**：37 个测试全过；去掉门之后新用例立刻失败；同一段真实历史从 `2 fail, 2 warn, 0 note` 变成 `2 fail, 0 warn, 0 note`（剩下的 2 个 fail 是 vendored 文件里密钥形状的字符串，用 `--exclude 'vendor/*'` 处理）；README 规则表同步改写。

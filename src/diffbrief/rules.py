@@ -42,6 +42,11 @@ LOCKFILES = re.compile(
     r"|uv\.lock|go\.sum|Gemfile\.lock|composer\.lock)$"
 )
 CODE = re.compile(r"\.(py|js|mjs|cjs|ts|tsx|jsx|go|rs|java|rb|kt|swift|php|c|h|cc|cpp|cs)$")
+# Debug output only gets left behind in something that runs. A reference doc or
+# a JSON fixture quoting `console.log(x)` is an example, not a stray statement.
+EXECUTABLE = re.compile(
+    r"\.(py|js|mjs|cjs|ts|tsx|jsx|go|rs|java|rb|kt|swift|php|c|h|cc|cpp|cs"
+    r"|sh|bash|zsh|pl|lua|r|ex|exs|clj|scala|dart|vue|svelte)$")
 TESTING = {"py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "rb", "kt", "swift", "php"}
 TESTISH = re.compile(
     r"(^|/)(tests?|__tests__|spec)/|(^|/)(test_[^/]+|[^/]+_test\.(py|go)|[^/]+\.(test|spec)\.[jt]sx?)$"
@@ -90,7 +95,7 @@ def look(files: list[FileDiff]) -> list[Finding]:
                     file.path, line.new_no, "fail", "secret-literal",
                     "a key-shaped literal is being added", _mask(text)))
                 continue  # one finding per line, the worst one wins
-            if DEBUG.search(text):
+            if EXECUTABLE.search(file.path) and DEBUG.search(text):
                 findings.append(Finding(
                     file.path, line.new_no, "warn", "debug-statement",
                     "debug output left in a diff", text.strip()[:120]))

@@ -58,6 +58,18 @@ class DebugTests(unittest.TestCase):
         self.assertEqual(rules(look([added_file("a.js", "logger.info(x);")])), [])
 
 
+class DebugStatementTests(unittest.TestCase):
+    def test_debug_output_in_code_is_a_warn(self) -> None:
+        findings = look([added_file("src/app.js", "console.log(state)")])
+        self.assertIn("debug-statement", rules(findings))
+
+    def test_a_console_log_quoted_in_a_reference_doc_is_not_stray_debug_output(self) -> None:
+        # skillforge's vendored skill references show console.log as an example;
+        # nobody left debug output behind in a markdown file.
+        findings = look([added_file("docs/REFERENCE.md", "```js\nconsole.log(state)\n```")])
+        self.assertNotIn("debug-statement", rules(findings))
+
+
 class TodoTests(unittest.TestCase):
     def test_a_new_todo_is_a_note(self) -> None:
         findings = look([added_file("a.py", "# TODO: handle the empty case")])
