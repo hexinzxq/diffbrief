@@ -27,7 +27,16 @@ DEBUG = re.compile(
     r"(\bconsole\.log\s*\(|\bdebugger\b|\bpdb\.set_trace\s*\(|\bbreakpoint\s*\(\s*\)"
     r"|\bbinding\.pry\b|\bprintln!\s*\(|\bdbg!\s*\()"
 )
-TODO = re.compile(r"\b(TODO|FIXME|XXX)\b")
+# A TODO is a marker you write in a comment, not the word appearing inside a
+# string of data. dsh-daily-lab's state files quote the tool's own description,
+# which contains "TODO", and the rule used to call that a new TODO entering the
+# tree - noise about content nobody is going to act on.
+TODO_MARK = re.compile(r"\b(TODO|FIXME|XXX)\b")
+TODO_IN_COMMENT = re.compile(
+    r"^\s*(?://|/\*|\*|#|<!--|--|;|%)"          # a comment marker first
+    r"|^\s*(TODO|FIXME|XXX)\b"                   # or the marker starts the line
+    r"|^\s*[-*+]\s+(TODO|FIXME|XXX)\b"          # or a list item in a doc
+)
 LOCKFILES = re.compile(
     r"(^|/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|poetry\.lock|Cargo\.lock"
     r"|uv\.lock|go\.sum|Gemfile\.lock|composer\.lock)$"
@@ -86,7 +95,7 @@ def look(files: list[FileDiff]) -> list[Finding]:
                     file.path, line.new_no, "warn", "debug-statement",
                     "debug output left in a diff", text.strip()[:120]))
                 continue
-            if TODO.search(text):
+            if TODO_MARK.search(text) and TODO_IN_COMMENT.search(text):
                 findings.append(Finding(
                     file.path, line.new_no, "note", "todo-added",
                     "a TODO/FIXME is entering the tree", text.strip()[:120]))

@@ -20,3 +20,9 @@
 - **改了什么**：`--exclude GLOB`（可重复，`fnmatch` 匹配 git 打印的路径）；`diff.read_diff()` 与 `server.make_handler()` 都接受 `exclude`，`--serve` 也生效；被跳过的数量进 JSON 的 `excluded`，终端总结行写 `(N file(s) skipped by --exclude)`——**跳过必须说出来**，不能静默少几个文件。新增用例：带 `vendor/lib.py` 的密钥改动，不排除 exit 1，`--exclude 'vendor/*'` exit 0 且 JSON `excluded == 1`、`files == 0`。
 - **为什么**：真跑出来的——把 20 个第三方 skill 导进 `skillforge/vendor/` 的那一刻，`diffbrief --base f33cd59~1` 报 `2 fail, 2 warn, 4 note`，全部落在 vendored 的 `evals.json` 里（`TODO` 示例、`console.log` 片段），这个仓库的主人一行都改不了。看板如果在这种地方吵，用户第三次就会加 `2>/dev/null`。
 - **验证**：28 个测试全过；同一段真实历史加 `--exclude 'vendor/*'` 后 `26 file(s), 3629 changed line(s) — 0 fail, 0 warn, 0 note (77 file(s) skipped by --exclude)`；README 用法与待办同步改写。
+
+### #3 TODO 是注释里的标记，不是数据里出现的那个词
+
+- **改了什么**：`todo-added` 从「行里出现 `TODO/FIXME/XXX`」收窄成「**注释形式**的标记」——`TODO_IN_COMMENT` 认 `#`、`//`、`/*`、`*`、`<!--`、`--`、`;`、`%` 开头，或标记直接在行首，或文档里的列表项 `- TODO:`。新增三条用例（数据字符串里的 TODO 不算；四种语言的注释标注都还算；原来的 note 行为不变）。
+- **为什么**：真跑出来的——`dsh-daily-lab --base HEAD~6` 报了两条 `todo-added`，两条都在 `state/*.json` 里，命中的是工具自己的 angle 描述文字「抓 TODO / FIXME 这类标记」。那不是新塞进来的待办，是数据里引用了这个词；规则看的是词，人看的是意图。
+- **验证**：30 个测试全过；把条件还原成 `TODO_MARK.search(text)` 后新用例立刻失败、改回来才过；同一段真实历史从 `0 fail, 0 warn, 2 note` 变成 `clean — nothing worth flagging`；README 规则表同步改写。

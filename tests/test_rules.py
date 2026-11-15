@@ -65,6 +65,18 @@ class TodoTests(unittest.TestCase):
         todo = [finding for finding in findings if finding.rule == "todo-added"][0]
         self.assertEqual(todo.severity, "note")
 
+    def test_a_todo_inside_a_data_string_is_not_a_new_todo(self) -> None:
+        # dsh-daily-lab keeps the tool's own description in a JSON file; the
+        # word TODO there is content being quoted, not a marker being added.
+        findings = look([added_file("state/week.json",
+                                    '"angle": "抓 TODO / FIXME 这类标记"')])
+        self.assertEqual(rules(findings), [])
+
+    def test_a_comment_style_todo_in_any_language_still_counts(self) -> None:
+        for line in ("# TODO: x", "// FIXME(y)", "<!-- XXX -->", "- TODO: y"):
+            findings = look([added_file("a.md", line)])
+            self.assertIn("todo-added", rules(findings), line)
+
 
 class ShapeTests(unittest.TestCase):
     def test_a_huge_deletion_is_flagged_but_a_lockfile_is_not(self) -> None:

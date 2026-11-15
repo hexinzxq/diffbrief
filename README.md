@@ -36,7 +36,7 @@ diffbrief 只做一件更小的事：
 | `debug-statement` | warn | 新增行里有 `console.log(`、`debugger`、`pdb.set_trace()`、`breakpoint()`、`binding.pry`、`dbg!(` |
 | `large-deletion` | warn | 单个文件删 ≥30 行且加 ≤5 行（lockfile 除外） |
 | `tests-missing` | warn | 改了源码（py/js/ts/go/rs/java/rb/kt/swift/php）却没有任何测试文件跟着改 |
-| `todo-added` | note | 新增行里出现 `TODO` / `FIXME` / `XXX` |
+| `todo-added` | note | 新增行里以注释形式出现 `TODO` / `FIXME` / `XXX`（`#`、`//`、`<!--`、行首、列表项；字符串里的这个词不算） |
 | `lockfile-churn` | note | `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `poetry.lock` / `Cargo.lock` / `uv.lock` / `go.sum` 等改动 ≥200 行 |
 
 规则会误报——这是设计上的取舍：它宁可吵，也不假装自己懂语义。请把它当「有人在你耳边念一遍」，不是「审查结论」。
