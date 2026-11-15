@@ -121,6 +121,21 @@ class ExitCodeTests(RepoCase):
         self.assertEqual(payload["excluded"], 1)
         self.assertEqual(payload["files"], 0)
 
+    def test_no_upstream_still_reads_what_the_remote_does_not_have(self) -> None:
+        # `git push origin main` without -u leaves no upstream; comparing to HEAD
+        # then says "nothing to read" while the secret is still only local.
+        remote = Path(self.tmp.name) / "remote.git"
+        git("init", "--bare", "-q", str(remote), cwd=self.repo)
+        git("remote", "add", "origin", str(remote), cwd=self.repo)
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        (self.repo / "cfg.py").write_text('API_KEY = "abcdefghijklmnop"\n')
+        git("add", ".", cwd=self.repo)
+        git("commit", "-qm", "add config", cwd=self.repo)
+        code, out = run("-C", str(self.repo))
+        self.assertEqual(code, 1)
+        self.assertIn("secret-literal", out)
+        self.assertIn("against origin/main", out)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -151,15 +151,37 @@ def repo_root(path: Path) -> Path:
     return Path(_git(["rev-parse", "--show-toplevel"], path).strip())
 
 
+def _exists(root: Path, ref: str) -> bool:
+    done = subprocess.run(["git", "rev-parse", "--verify", "--quiet", ref],
+                          cwd=root, capture_output=True, text=True)
+    return done.returncode == 0
+
+
 def resolve_base(root: Path, base: str | None) -> str:
-    """What to diff against: what the caller asked, else the upstream, else HEAD."""
+    """What to diff against.
+
+    The promise is "what you are about to push", so an upstream is not enough:
+    a branch that has never been pushed (or a fresh clone using `git push origin
+    main` without -u) has no upstream, and falling straight back to HEAD then
+    reports "nothing to read" while the commits are still local. In that case
+    the remote's own copy of the branch is the honest base.
+    """
     if base:
         return base
     done = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
         cwd=root, capture_output=True, text=True,
     )
-    return "@{upstream}" if done.returncode == 0 else "HEAD"
+    if done.returncode == 0:
+        return "@{upstream}"
+    branch = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                            cwd=root, capture_output=True, text=True).stdout.strip()
+    if branch and branch != "HEAD":
+        for remote in ("origin",):
+            candidate = f"{remote}/{branch}"
+            if _exists(root, candidate):
+                return candidate
+    return "HEAD"
 
 
 def excluded(path: str, patterns: tuple[str, ...]) -> bool:

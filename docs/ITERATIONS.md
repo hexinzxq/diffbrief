@@ -26,3 +26,10 @@
 - **改了什么**：`todo-added` 从「行里出现 `TODO/FIXME/XXX`」收窄成「**注释形式**的标记」——`TODO_IN_COMMENT` 认 `#`、`//`、`/*`、`*`、`<!--`、`--`、`;`、`%` 开头，或标记直接在行首，或文档里的列表项 `- TODO:`。新增三条用例（数据字符串里的 TODO 不算；四种语言的注释标注都还算；原来的 note 行为不变）。
 - **为什么**：真跑出来的——`dsh-daily-lab --base HEAD~6` 报了两条 `todo-added`，两条都在 `state/*.json` 里，命中的是工具自己的 angle 描述文字「抓 TODO / FIXME 这类标记」。那不是新塞进来的待办，是数据里引用了这个词；规则看的是词，人看的是意图。
 - **验证**：30 个测试全过；把条件还原成 `TODO_MARK.search(text)` 后新用例立刻失败、改回来才过；同一段真实历史从 `0 fail, 0 warn, 2 note` 变成 `clean — nothing worth flagging`；README 规则表同步改写。
+
+### #4 `--install-hook`，以及它顺手露出的一个「钩子根本拦不住」的洞
+
+- **改了什么**：`--install-hook` 写 `.git/hooks/pre-push`（`hook.py`，`hooks_dir()` 走 `git rev-parse --git-path hooks`）；钩子内容能在 `diffbrief` 不在 PATH 时只打一行提示、不拦 push；已经有别人写的 `pre-push` 时抛 `GitError` 拒绝覆盖；重复安装只报「already there」。四条用例，其中一条真起 `git push` 到裸仓库、用假 `diffbrief` 验证钩子确实能拦下。
+- **为什么**：工具的口号是「push 之前看一眼」，可没有任何东西逼你看一眼；钩子是把这个口号接上线的最小零件。
+- **顺手抓到的真洞**：在演示钩子时，一个从来没 `-u` 推过的分支（只有 `git push origin main`）**钩子放行了一个带 `ghp_…` token 的提交**——`resolve_base()` 没 upstream 就退回 `HEAD`，而 `HEAD` 跟自己永远没差，于是报告「no changes against HEAD — nothing to read」。`resolve_base()` 改成三级：显式 `--base` → `@{upstream}` → 存在同名远程跟踪分支时用 `origin/<branch>` → 最后才 `HEAD`。这才是「你即将推出去的东西」。
+- **验证**：35 个测试全过；新用例（无 upstream + 裸远端 + 新提交里的密钥）在没有 fallback 时必须失败——实测还原后 0.29 秒失败；真仓库里装钩子后推一个 `PASSWORD = "…"` 的提交，钩子输出 `1 file(s), 1 changed line(s) against origin/main — 1 fail`，push 被拒，远端 ref 没动。

@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from .diff import GitError, excluded, read_diff, repo_root, resolve_base
+from .hook import install as install_hook
 from .report import build, render, worst
 from .server import serve
 
@@ -29,6 +30,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--staged", action="store_true",
                         help="read the index instead of the unpushed commits")
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
+    parser.add_argument("--install-hook", action="store_true",
+                        help="write a pre-push hook that runs diffbrief")
     parser.add_argument("--serve", action="store_true", help="open the report in a page")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
@@ -36,6 +39,13 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         root = repo_root(Path(args.root).resolve())
+        if args.install_hook:
+            target, wrote = install_hook(root)
+            if wrote:
+                print(f"installed {target} — every git push now reads the diff first")
+            else:
+                print(f"{target} is already there")
+            return 0
         if args.serve:
             httpd = serve(root, args.base, args.staged, args.host, args.port,
                           tuple(args.exclude))
