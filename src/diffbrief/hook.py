@@ -15,11 +15,12 @@ from .diff import GitError
 SCRIPT = """#!/bin/sh
 # Installed by `diffbrief --install-hook`.
 #
-# Runs the same report you can run by hand. Exit 1 stops the push when the
-# report has a `fail`; anything the tool cannot run is not a reason to block a
-# push, so a missing command only prints a note and lets it through.
+# Runs the same report you can run by hand, but only over the commits being
+# pushed: an uncommitted experiment in the working copy is not part of a push.
+# Exit 1 stops the push when the report has a `fail`; anything the tool cannot
+# run is not a reason to block a push, so a missing command only prints a note.
 if command -v diffbrief >/dev/null 2>&1; then
-    exec diffbrief
+    exec diffbrief --committed
 fi
 echo "diffbrief: not on PATH, so this hook is not checking anything" >&2
 echo "diffbrief: pip install -e . , or rm $(git rev-parse --git-path hooks)/pre-push" >&2

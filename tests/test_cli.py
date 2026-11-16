@@ -136,6 +136,20 @@ class ExitCodeTests(RepoCase):
         self.assertIn("secret-literal", out)
         self.assertIn("against origin/main", out)
 
+    def test_committed_ignores_a_secret_that_is_only_in_the_working_copy(self) -> None:
+        remote = Path(self.tmp.name) / "remote.git"
+        git("init", "--bare", "-q", str(remote), cwd=self.repo)
+        git("remote", "add", "origin", str(remote), cwd=self.repo)
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        (self.repo / "app.py").write_text("x = 1\ny = 2\n")
+        git("commit", "-qam", "harmless", cwd=self.repo)
+        (self.repo / "app.py").write_text('x = 1\ny = 2\nAPI_KEY = "pastedwhiledebugging"\n')
+        code, out = run("-C", str(self.repo))
+        self.assertEqual(code, 1, out)          # the working copy does hold it
+        code, out = run("-C", str(self.repo), "--committed")
+        self.assertEqual(code, 0, out)          # but the commits do not
+        self.assertNotIn("secret-literal", out)
+
 
 if __name__ == "__main__":
     unittest.main()

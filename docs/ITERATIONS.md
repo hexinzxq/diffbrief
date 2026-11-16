@@ -45,3 +45,9 @@
 - **改了什么**：`_tests_missing()` 的候选条件加 `file.changed()`——`git mv a.py b.py` 这种零行变更不再触发；改名同时改了内容的仍然触发。两条对应用例（纯改名不报、改名带内容改报）。
 - **为什么**：真跑出来的——`git mv a.py b.py` + `chmod +x run.sh` 的暂存区，报告写着 `2 file(s), 0 changed line(s)`，下面却挂了一条 `WARN b.py — tests-missing: 1 source file(s) changed and no test did`。**一个 changed line 是 0 的 diff 却说自己改了源码**，这是自相矛盾的说法，而人看到「改了源码」会真的回去补测试。
 - **验证**：41 个测试全过；把 `and file.changed()` 去掉后新用例立刻失败；同一暂存区现在输出 `0 file(s), 0 changed line(s) — 0 fail, 0 warn, 0 note`；README 规则表补一句「纯改名不算」。
+
+### #7 钩子只看提交，不该被工作区的临时改动拦住
+
+- **改了什么**：新增 `--committed`（`git diff <base>...HEAD`，只读提交，不读工作区与索引）；`--install-hook` 写的 `pre-push` 改成跑 `diffbrief --committed`；`--serve` 也透传该模式。新增两条用例：提交是干净的、工作区贴着一个密钥 → 默认模式 exit 1、`--committed` exit 0；钩子脚本必须带 `--committed`。
+- **为什么**：真跑出来的——在一个提交本身干净的仓库里，调试时把 `API_KEY = "…"` 贴在 `a.py` 末尾还没提交，`git push` 被自己的钩子拦下了：报告写 `against origin/main — 1 fail`，可这次 push 里根本没有那一行。**「你即将推出去的东西」不含未提交的改动**，钩子拿工作区当依据就是假报警，假报警多了人就会 `--no-verify`。
+- **验证**：42 个测试全过；同一仓库里重装钩子后再 push，报告变成 `1 file(s), 1 changed line(s) against origin/main — 0 fail`，push 通过；把密钥提交进去则照旧拦下（已有用例覆盖）。README 用法与钩子说明同步改写。

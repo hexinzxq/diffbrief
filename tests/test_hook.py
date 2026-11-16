@@ -22,7 +22,7 @@ class InstallHookTests(RepoCase):
         self.assertTrue(os.access(path, os.X_OK))
         text = path.read_text()
         self.assertIn("Installed by `diffbrief --install-hook`", text)
-        self.assertIn("exec diffbrief", text)
+        self.assertIn("exec diffbrief --committed", text)
         self.assertIn("installed", out)
 
     def test_installing_twice_is_not_an_error_and_does_not_rewrite(self) -> None:

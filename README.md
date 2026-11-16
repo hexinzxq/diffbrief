@@ -50,13 +50,14 @@ diffbrief --staged          # 只看暂存区
 diffbrief --base origin/main
 diffbrief --json            # 给脚本/钩子
 diffbrief --exclude 'vendor/*' --exclude '*.min.js'   # 跳过不该看的文件（可重复）
+diffbrief --committed       # 只看提交，不看工作区（pre-push 该用这个）
 diffbrief --install-hook    # 写一个 pre-push：有 fail 就拦下这次 push
 diffbrief --serve           # 本地页面（默认 127.0.0.1:8765，5 秒轮询）
 ```
 
 `--exclude` 跳过的文件不会被静默丢掉：总结行会写 `(N file(s) skipped by --exclude)`，JSON 里有 `excluded`。
 
-装钩子之后，`.git/hooks/pre-push` 会跑同一条命令；钩子里 `diffbrief` 不在 PATH 时只打一行提示、不拦 push（工具坏了不该堵住你的工作）。已经有别人写的 `pre-push` 时拒绝覆盖。
+装钩子之后，`.git/hooks/pre-push` 跑的是 `diffbrief --committed`——只读**这次要推出去的提交**，你调试时临时贴在文件里还没提交的密钥不会被算成「要推的东西」；钩子里 `diffbrief` 不在 PATH 时只打一行提示、不拦 push（工具坏了不该堵住你的工作）。已经有别人写的 `pre-push` 时拒绝覆盖。
 
 退出码：`0` 干净 / `1` 有 fail / `2` git 或端口出错。
 

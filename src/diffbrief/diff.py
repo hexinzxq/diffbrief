@@ -195,9 +195,14 @@ def excluded(path: str, patterns: tuple[str, ...]) -> bool:
 
 def read_diff(root: Path, base: str | None = None, staged: bool = False,
               paths: list[str] | None = None,
-              exclude: tuple[str, ...] = ()) -> list[FileDiff]:
+              exclude: tuple[str, ...] = (),
+              committed: bool = False) -> list[FileDiff]:
     args = ["diff", "--no-color", "--find-renames", "--unified=3"]
-    if staged:
+    if committed:
+        # Only the commits: a secret you pasted into the working copy while
+        # debugging is not part of the push, and blocking on it is a lie.
+        args.append(f"{resolve_base(root, base)}...HEAD")
+    elif staged:
         args.append("--cached")
     else:
         args.append(resolve_base(root, base))
