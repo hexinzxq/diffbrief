@@ -124,6 +124,7 @@ def _tests_missing(files: list[FileDiff]) -> list[Finding]:
     """Code moved, no test moved with it: say so once, on the biggest file."""
     code = [file for file in files
             if not file.deleted and CODE.search(file.path) and not is_test(file.path)
+            and file.changed()  # a pure rename or mode change moves no line
             and file.path.rsplit(".", 1)[-1] in TESTING]
     if not code:
         return []

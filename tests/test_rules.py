@@ -90,6 +90,22 @@ class TodoTests(unittest.TestCase):
             self.assertIn("todo-added", rules(findings), line)
 
 
+class RenameTests(unittest.TestCase):
+    def test_a_rename_with_no_line_changed_does_not_ask_for_a_test(self) -> None:
+        # `git mv a.py b.py` moves no line; saying "source changed, no test did"
+        # here is noise about a diff that is empty.
+        files = parse("diff --git a/a.py b/b.py\nsimilarity index 100%\n"
+                      "rename from a.py\nrename to b.py\n")
+        self.assertEqual(files[0].changed(), 0)
+        self.assertEqual(all_rules(look(files)), [])
+
+    def test_a_rename_that_also_changes_lines_still_asks(self) -> None:
+        files = parse("diff --git a/a.py b/b.py\nsimilarity index 90%\n"
+                      "rename from a.py\nrename to b.py\n"
+                      "--- a/a.py\n+++ b/b.py\n@@ -1 +1,2 @@\n x = 1\n+y = 2\n")
+        self.assertIn("tests-missing", all_rules(look(files)))
+
+
 class ShapeTests(unittest.TestCase):
     def test_a_huge_deletion_is_flagged_but_a_lockfile_is_not(self) -> None:
         findings = look([added_file("src/big.py", "still here", removed=40),

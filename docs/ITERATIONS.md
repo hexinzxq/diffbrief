@@ -39,3 +39,9 @@
 - **改了什么**：`debug-statement` 加一层 `EXECUTABLE` 门（py/js/ts/go/rs/…/sh/vue/svelte 这些能跑起来的扩展名）；`.md`、`.json` 里引用 `console.log(x)` 不再报。新增两条用例（代码里报、文档代码块里不报）。
 - **为什么**：真跑出来的——`skillforge --base f33cd59~1`（那次把 20 个第三方 skill 导进 `vendor/`）报 `2 warn`，两条都在 `references/REFERENCE.md` 的代码块里，是文档在**举例**说明 `console.log` 怎么用。没人会把调试输出「留在」一个 markdown 文件里；这条规则原本是在猜文件会不会被执行，猜错了就变成噪音。
 - **验证**：37 个测试全过；去掉门之后新用例立刻失败；同一段真实历史从 `2 fail, 2 warn, 0 note` 变成 `2 fail, 0 warn, 0 note`（剩下的 2 个 fail 是 vendored 文件里密钥形状的字符串，用 `--exclude 'vendor/*'` 处理）；README 规则表同步改写。
+
+### #6 纯改名不算「改了源码没改测试」
+
+- **改了什么**：`_tests_missing()` 的候选条件加 `file.changed()`——`git mv a.py b.py` 这种零行变更不再触发；改名同时改了内容的仍然触发。两条对应用例（纯改名不报、改名带内容改报）。
+- **为什么**：真跑出来的——`git mv a.py b.py` + `chmod +x run.sh` 的暂存区，报告写着 `2 file(s), 0 changed line(s)`，下面却挂了一条 `WARN b.py — tests-missing: 1 source file(s) changed and no test did`。**一个 changed line 是 0 的 diff 却说自己改了源码**，这是自相矛盾的说法，而人看到「改了源码」会真的回去补测试。
+- **验证**：41 个测试全过；把 `and file.changed()` 去掉后新用例立刻失败；同一暂存区现在输出 `0 file(s), 0 changed line(s) — 0 fail, 0 warn, 0 note`；README 规则表补一句「纯改名不算」。
