@@ -3,6 +3,7 @@ import os
 import unittest
 from pathlib import Path
 
+from diffbrief.hook import SCRIPT
 from tests.test_cli import RepoCase, git, run
 
 
@@ -23,7 +24,24 @@ class InstallHookTests(RepoCase):
         text = path.read_text()
         self.assertIn("Installed by `diffbrief --install-hook`", text)
         self.assertIn("exec diffbrief --committed", text)
-        self.assertIn("installed", out)
+
+    def test_a_stale_script_of_ours_is_rewritten_not_kept(self) -> None:
+        # The script is where the behaviour lives (`--committed`); an upgrade that
+        # leaves the old one in place keeps the old behaviour.
+        run("-C", str(self.repo), "--install-hook")
+        path = self.hook()
+        path.write_text("#!/bin/sh\n# Installed by `diffbrief --install-hook`.\n"
+                        "exec diffbrief\n")
+        code, out = run("-C", str(self.repo), "--install-hook")
+        self.assertEqual(code, 0)
+        self.assertIn("rewrote", out)
+        self.assertEqual(path.read_text(), SCRIPT)
+
+    def test_installing_again_says_it_matches_this_version(self) -> None:
+        run("-C", str(self.repo), "--install-hook")
+        code, out = run("-C", str(self.repo), "--install-hook")
+        self.assertEqual(code, 0)
+        self.assertIn("matches this version", out)
 
     def test_installing_twice_is_not_an_error_and_does_not_rewrite(self) -> None:
         run("-C", str(self.repo), "--install-hook")

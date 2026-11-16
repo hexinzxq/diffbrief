@@ -43,11 +43,13 @@ def main(argv: list[str] | None = None) -> int:
     try:
         root = repo_root(Path(args.root).resolve())
         if args.install_hook:
-            target, wrote = install_hook(root)
-            if wrote:
+            target, status = install_hook(root)
+            if status == "new":
                 print(f"installed {target} — every git push now reads the diff first")
+            elif status == "updated":
+                print(f"rewrote {target} — the script changed since it was installed")
             else:
-                print(f"{target} is already there")
+                print(f"{target} is already there and matches this version")
             return 0
         if args.serve:
             httpd = serve(root, args.base, args.staged, args.host, args.port,

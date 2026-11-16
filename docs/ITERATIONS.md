@@ -51,3 +51,9 @@
 - **改了什么**：新增 `--committed`（`git diff <base>...HEAD`，只读提交，不读工作区与索引）；`--install-hook` 写的 `pre-push` 改成跑 `diffbrief --committed`；`--serve` 也透传该模式。新增两条用例：提交是干净的、工作区贴着一个密钥 → 默认模式 exit 1、`--committed` exit 0；钩子脚本必须带 `--committed`。
 - **为什么**：真跑出来的——在一个提交本身干净的仓库里，调试时把 `API_KEY = "…"` 贴在 `a.py` 末尾还没提交，`git push` 被自己的钩子拦下了：报告写 `against origin/main — 1 fail`，可这次 push 里根本没有那一行。**「你即将推出去的东西」不含未提交的改动**，钩子拿工作区当依据就是假报警，假报警多了人就会 `--no-verify`。
 - **验证**：42 个测试全过；同一仓库里重装钩子后再 push，报告变成 `1 file(s), 1 changed line(s) against origin/main — 0 fail`，push 通过；把密钥提交进去则照旧拦下（已有用例覆盖）。README 用法与钩子说明同步改写。
+
+### #8 自己写的旧钩子要被重写，而不是「已经在那了」
+
+- **改了什么**：`hook.install()` 返回值从 `(path, wrote: bool)` 改成 `(path, "new" | "updated" | "unchanged")`——文件里有我们自己的标记但内容和当前 `SCRIPT` 不同时重写；`cli.py` 三句话分别是 `installed …`、`rewrote … — the script changed since it was installed`、`… is already there and matches this version`。别人写的钩子照旧抛错不动。
+- **为什么**：真踩到——`SCRIPT` 从上一条改动里加了 `--committed`，可我在那个测试仓库里跑 `--install-hook` 得到的是「already there」，钩子还留着 `exec diffbrief` 的旧行为；最后是手改文件才让它按新脚本跑。**脚本本身承载行为，升级时不重写等于没升级**，而「already there」听起来像「已经是最新」。
+- **验证**：42 个测试（HEAD 是 40，新增 2 条：旧脚本必须被重写、再装一次必须报 `matches this version`）；真仓库里先看到 `rewrote …`、再装一次看到 `… matches this version`，钩子内容里出现了新注释 `not part of a push`。

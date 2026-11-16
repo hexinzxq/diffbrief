@@ -38,16 +38,28 @@ def hooks_dir(root: Path) -> Path:
     return path if path.is_absolute() else (root / path)
 
 
-def install(root: Path) -> tuple[Path, bool]:
-    """Write the hook. Returns (path, wrote) — wrote is False when it was already ours."""
+MARKER = "Installed by `diffbrief --install-hook`"
+
+
+def install(root: Path) -> tuple[Path, str]:
+    """Write the hook. Returns (path, status) where status is new, updated or unchanged.
+
+    An older copy of our own script is rewritten: the script is the part of this
+    tool that carries the behaviour (`--committed`), so leaving a stale one in
+    place means the hook checks something the tool no longer does.
+    """
     target = hooks_dir(root) / "pre-push"
     if target.exists():
         current = target.read_text()
-        if "Installed by `diffbrief --install-hook`" in current:
-            return target, False
-        raise GitError(f"{target} already exists and was not written by diffbrief — "
-                       "move it aside first, this will not overwrite your hook")
+        if MARKER not in current:
+            raise GitError(f"{target} already exists and was not written by diffbrief — "
+                           "move it aside first, this will not overwrite your hook")
+        if current == SCRIPT:
+            return target, "unchanged"
+        target.write_text(SCRIPT)
+        os.chmod(target, 0o755)
+        return target, "updated"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(SCRIPT)
     os.chmod(target, 0o755)
-    return target, True
+    return target, "new"
