@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 from diffbrief.cli import main
+from diffbrief.diff import resolve_base
 
 
 def git(*args: str, cwd: Path) -> str:
@@ -149,6 +150,21 @@ class ExitCodeTests(RepoCase):
         code, out = run("-C", str(self.repo), "--committed")
         self.assertEqual(code, 0, out)          # but the commits do not
         self.assertNotIn("secret-literal", out)
+
+    def test_a_never_pushed_branch_is_read_against_the_remote_default(self) -> None:
+        remote = Path(self.tmp.name) / "remote.git"
+        git("init", "--bare", "-q", str(remote), cwd=self.repo)
+        git("remote", "add", "origin", str(remote), cwd=self.repo)
+        git("push", "-q", "origin", "main", cwd=self.repo)
+        git("remote", "set-head", "origin", "main", cwd=self.repo)
+        git("checkout", "-q", "-b", "feature", cwd=self.repo)
+        (self.repo / "cfg.py").write_text('PASSWORD = "hunter2hunter2hunter2"\n')
+        git("add", "-A", cwd=self.repo)
+        git("commit", "-qm", "add cfg", cwd=self.repo)
+        self.assertEqual(resolve_base(self.repo, None), "origin/HEAD")
+        code, out = run("-C", str(self.repo), "--committed")
+        self.assertEqual(code, 1, out)
+        self.assertIn("secret-literal", out)
 
 
 if __name__ == "__main__":

@@ -181,6 +181,12 @@ def resolve_base(root: Path, base: str | None) -> str:
             candidate = f"{remote}/{branch}"
             if _exists(root, candidate):
                 return candidate
+    # A branch that has never been pushed has no upstream and no remote copy,
+    # but its commits are still unpushed: everything after where the remote's
+    # default branch is. Without this the hook reads HEAD...HEAD and passes a
+    # brand-new branch silently.
+    if _exists(root, "origin/HEAD"):
+        return "origin/HEAD"
     return "HEAD"
 
 

@@ -45,7 +45,7 @@ diffbrief 只做一件更小的事：
 
 ```bash
 pip install -e .            # 或者不装，PYTHONPATH=src python -m diffbrief
-diffbrief                   # 未推送的 commit（无上游则 HEAD）
+diffbrief                   # 未推送的 commit（上游 → origin/<branch> → origin/HEAD，都没有才 HEAD）
 diffbrief --staged          # 只看暂存区
 diffbrief --base origin/main
 diffbrief --json            # 给脚本/钩子
@@ -58,6 +58,8 @@ diffbrief --serve           # 本地页面（默认 127.0.0.1:8765，5 秒轮询
 `--exclude` 跳过的文件不会被静默丢掉：总结行会写 `(N file(s) skipped by --exclude)`，JSON 里有 `excluded`。
 
 装钩子之后，`.git/hooks/pre-push` 跑的是 `diffbrief --committed`——只读**这次要推出去的提交**，你调试时临时贴在文件里还没提交的密钥不会被算成「要推的东西」；钩子里 `diffbrief` 不在 PATH 时只打一行提示、不拦 push（工具坏了不该堵住你的工作）。已经有别人写的 `pre-push` 时拒绝覆盖。
+
+刚推出去的新分支还没有上游，也没有 `origin/<branch>`：这时候比的是 `origin/HEAD`（远端默认分支）——「这条新分支带出去的所有提交」，而不是空。
 
 退出码：`0` 干净 / `1` 有 fail / `2` git 或端口出错。
 

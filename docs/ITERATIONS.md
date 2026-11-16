@@ -57,3 +57,9 @@
 - **改了什么**：`hook.install()` 返回值从 `(path, wrote: bool)` 改成 `(path, "new" | "updated" | "unchanged")`——文件里有我们自己的标记但内容和当前 `SCRIPT` 不同时重写；`cli.py` 三句话分别是 `installed …`、`rewrote … — the script changed since it was installed`、`… is already there and matches this version`。别人写的钩子照旧抛错不动。
 - **为什么**：真踩到——`SCRIPT` 从上一条改动里加了 `--committed`，可我在那个测试仓库里跑 `--install-hook` 得到的是「already there」，钩子还留着 `exec diffbrief` 的旧行为；最后是手改文件才让它按新脚本跑。**脚本本身承载行为，升级时不重写等于没升级**，而「already there」听起来像「已经是最新」。
 - **验证**：42 个测试（HEAD 是 40，新增 2 条：旧脚本必须被重写、再装一次必须报 `matches this version`）；真仓库里先看到 `rewrote …`、再装一次看到 `… matches this version`，钩子内容里出现了新注释 `not part of a push`。
+
+### #9 从没推过的分支要跟 origin/HEAD 比，不能跟 HEAD 比
+
+- **改了什么**：`resolve_base()` 的兜底链补一级 `origin/HEAD`：`--base` → `@{upstream}` → `origin/<branch>` → `origin/HEAD` → `HEAD`（`_exists(root, "origin/HEAD")` 判定）。
+- **为什么**：真踩到——新分支第一次 push，钩子报 `no changes against HEAD — nothing to read`（`HEAD...HEAD` 是空 diff），于是把一个带 `PASSWORD = "hunter2…"` 的提交原样推了上去。**「这条分支带出去的所有提交」不能拿 HEAD 当参照**，它只会跟自己比。
+- **验证**：43 个测试（新增一条：裸远端 + `set-head origin main` + 新分支带密钥 → `resolve_base` 返回 `origin/HEAD`、`--committed` exit 1）；真仓库里同一场景复现：改前 `--base HEAD` 版本输出 `nothing to read`、push 通过，改后钩子输出 `1 file(s), 1 changed line(s) against origin/HEAD — 1 fail` 并拦下，远端 ref 为 0。
