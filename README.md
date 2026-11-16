@@ -32,7 +32,7 @@ diffbrief 只做一件更小的事：
 
 | 规则 | 级别 | 触发条件 |
 |---|---|---|
-| `secret-literal` | fail | 新增行里出现 `api_key/secret/token/password … = "…"`，或 `ghp_/gho_/sk-/AKIA…`、私钥头。证据打码 |
+| `secret-literal` | fail | 新增行里出现 `api_key/secret/token/password … = "…"`，或 `ghp_/gho_/sk-/AKIA…`、私钥头。证据打码；模板占位值（`CHANGE_ME`、`your-…-here`、`${API_KEY}`、`<token>`、`dummy`、`redacted`）不算 |
 | `debug-statement` | warn | **可执行文件**的新增行里有 `console.log(`、`debugger`、`pdb.set_trace()`、`breakpoint()`、`binding.pry`、`dbg!(`（文档里举例不算） |
 | `large-deletion` | warn | 单个文件删 ≥30 行且加 ≤5 行（lockfile 除外） |
 | `tests-missing` | warn | 改了源码（py/js/ts/go/rs/java/rb/kt/swift/php）却没有任何测试文件跟着改；纯改名（一行没动）不算 |

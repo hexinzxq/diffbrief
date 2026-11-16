@@ -63,3 +63,9 @@
 - **改了什么**：`resolve_base()` 的兜底链补一级 `origin/HEAD`：`--base` → `@{upstream}` → `origin/<branch>` → `origin/HEAD` → `HEAD`（`_exists(root, "origin/HEAD")` 判定）。
 - **为什么**：真踩到——新分支第一次 push，钩子报 `no changes against HEAD — nothing to read`（`HEAD...HEAD` 是空 diff），于是把一个带 `PASSWORD = "hunter2…"` 的提交原样推了上去。**「这条分支带出去的所有提交」不能拿 HEAD 当参照**，它只会跟自己比。
 - **验证**：43 个测试（新增一条：裸远端 + `set-head origin main` + 新分支带密钥 → `resolve_base` 返回 `origin/HEAD`、`--committed` exit 1）；真仓库里同一场景复现：改前 `--base HEAD` 版本输出 `nothing to read`、push 通过，改后钩子输出 `1 file(s), 1 changed line(s) against origin/HEAD — 1 fail` 并拦下，远端 ref 为 0。
+
+### #10 模板里的 CHANGE_ME 不是泄漏的密钥
+
+- **改了什么**：`secret-literal` 在 `SECRET_NAME` 命中后先取出引号里的值，`PLACEHOLDER` 匹配 `<…>`、`${…}`、`***`、`xxx`、`…`、`change_me`、`your-…`、`example…`、`placeholder`、`dummy`、`fake`、`sample`、`redacted`、`todo` 就不报；`ghp_…`/`sk-…`/`AKIA…`/私钥头这些形状照旧报。新增 2 条用例（8 种占位值都静默、真实十六进制值仍 fail）。
+- **为什么**：真跑出来的——`config.example.py` 里 `API_KEY = "CHANGE_ME"`、`PASSWORD = "your-password-here"` 被判 2 个 fail，而这正是每个仓库的示例配置该写的东西。**一有示例配置就报两个 fail，第三次之后没人再读这条规则**。
+- **验证**：45 个测试全过（HEAD 43）；同一个 `config.example.py` 从 `2 fail` 变成 `0 fail, 1 warn`，exit 0。

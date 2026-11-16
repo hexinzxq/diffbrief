@@ -17,6 +17,15 @@ SECRET_NAME = re.compile(
     r"(?i)\b(api[_-]?key|apikey|secret|token|password|passwd|pwd|access[_-]?key)\b"
     r"\s*[:=]\s*[\"'][^\"']{8,}[\"']"
 )
+# A template config says CHANGE_ME, <token>, ${API_KEY}: those are instructions
+# to the reader, and every repo with an example config has them. Failing on them
+# trains people to ignore the rule by the third one.
+SECRET_VALUE = re.compile(
+    r"(?i)\b(?:api[_-]?key|apikey|secret|token|password|passwd|pwd|access[_-]?key)\b"
+    r"\s*[:=]\s*[\"']([^\"']{8,})[\"']")
+PLACEHOLDER = re.compile(
+    r"(?i)^(<[^>]*>|\$\{[^}]*\}|\*+|x{3,}|\.\.\.|"
+    r"change[-_ ]?me|your[-_ ][\w .-]*|example[a-z_-]*|placeholder|dummy|fake|sample|redacted|todo)$")
 SECRET_SHAPE = [
     re.compile(r"\b(ghp|gho|ghs|ghu)_[A-Za-z0-9]{20,}"),
     re.compile(r"\bsk-[A-Za-z0-9]{20,}"),
@@ -90,7 +99,10 @@ def look(files: list[FileDiff]) -> list[Finding]:
             continue
         for line in file.added():
             text = line.text
-            if SECRET_NAME.search(text) or any(shape.search(text) for shape in SECRET_SHAPE):
+            value = SECRET_VALUE.search(text)
+            placeholder = bool(value and PLACEHOLDER.match(value.group(1).strip()))
+            if (SECRET_NAME.search(text) and not placeholder) or any(
+                    shape.search(text) for shape in SECRET_SHAPE):
                 findings.append(Finding(
                     file.path, line.new_no, "fail", "secret-literal",
                     "a key-shaped literal is being added", _mask(text)))

@@ -106,6 +106,22 @@ class RenameTests(unittest.TestCase):
         self.assertIn("tests-missing", all_rules(look(files)))
 
 
+    def test_a_template_value_is_not_a_leaked_key(self) -> None:
+        # Every repo with an example config says CHANGE_ME / your-token-here;
+        # failing on those teaches people to ignore the rule.
+        for template in ("CHANGE_ME", "your-api-key-here", "example", "dummy",
+                         "${API_KEY}", "<token>", "xxxxxxxx", "redacted"):
+            with self.subTest(template=template):
+                findings = look([added_file("config.example.py",
+                                            f'API_KEY = "{template}zz"'
+                                            if template in ("example", "dummy") else
+                                            f'API_KEY = "{template}"')])
+                self.assertEqual(rules(findings), [])
+
+    def test_a_real_looking_value_still_fails(self) -> None:
+        findings = look([added_file("config.py", 'API_KEY = "9f8e7d6c5b4a3210"')])
+        self.assertIn("secret-literal", rules(findings))
+
 class ShapeTests(unittest.TestCase):
     def test_a_huge_deletion_is_flagged_but_a_lockfile_is_not(self) -> None:
         findings = look([added_file("src/big.py", "still here", removed=40),
