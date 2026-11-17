@@ -39,6 +39,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args(argv)
+    if args.staged and args.committed:
+        # These read two different things; letting one silently win means the
+        # label ("against the index") describes a diff nobody asked for.
+        print("diffbrief: --staged reads the index and --committed reads the "
+              "commits; pick one", file=sys.stderr)
+        return 2
 
     try:
         root = repo_root(Path(args.root).resolve())

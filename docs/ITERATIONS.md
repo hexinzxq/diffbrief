@@ -93,3 +93,9 @@
 - **改了什么**：`static/index.html` 的 chips 多一枚虚线 chip「跳过 N（--exclude）」，页脚在 `data.excluded` 非零时补一句「· 跳过 N 个文件（--exclude）」；`tests/test_server.py` 加一条断言页面里确实读了 `data.excluded`。
 - **为什么**：终端早就写 `(N file(s) skipped by --exclude)`，页面只有「文件 N」这一枚 chip——**同一个报告换到页面上就把「我少读了什么」咽掉了**；页面上数字比终端小，人会以为工具漏了文件，而不是知道自己排除了它。
 - **验证**：49 个测试全过（HEAD 48）；`skillforge` 的 `sloplint.py` 扫这个页面仍是 `clean: 0 tell(s) wairable, 0 failures`；`--exclude` 起服务时 `/api/report` 的 `excluded` 为 1，页面据此显示跳过提示。
+
+### #15 `--staged` 和 `--committed` 不能同时给
+
+- **改了什么**：`main()` 开头拦一手：两个都给就 `diffbrief: --staged reads the index and --committed reads the commits; pick one`、exit 2。新增 1 条用例。
+- **为什么**：真跑出来的——`--staged --committed` 一起给时 `committed` 悄悄赢了，输出还写 `against the index`（因为标签只看 `staged`）。**两个开关读的是两个不同的东西，一个默默盖掉另一个，标签还替它圆谎**：用户以为在看暂存区，实际看的是提交。
+- **验证**：50 个测试全过（HEAD 49）；同一目录现在直接 `exit 2` 并把两个选项读什么讲清楚。

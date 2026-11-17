@@ -181,6 +181,11 @@ class ExitCodeTests(RepoCase):
         self.assertIn("skipped by --exclude", out)
         self.assertIn("among the 1 file(s) read", out)
 
+    def test_staged_and_committed_together_are_refused(self) -> None:
+        code, out = run("-C", str(self.repo), "--staged", "--committed")
+        self.assertEqual(code, 2)
+        self.assertIn("pick one", out)
+
 
 if __name__ == "__main__":
     unittest.main()
