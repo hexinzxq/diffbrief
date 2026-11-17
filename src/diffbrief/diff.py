@@ -203,7 +203,10 @@ def read_diff(root: Path, base: str | None = None, staged: bool = False,
               paths: list[str] | None = None,
               exclude: tuple[str, ...] = (),
               committed: bool = False) -> list[FileDiff]:
-    args = ["diff", "--no-color", "--find-renames", "--unified=3"]
+    # core.quotePath would turn `üñí çode.py` into \303\274... in the header,
+    # and that is the path a person then has to type to find the file.
+    args = ["-c", "core.quotePath=false", "diff", "--no-color",
+            "--find-renames", "--unified=3"]
     if committed:
         # Only the commits: a secret you pasted into the working copy while
         # debugging is not part of the push, and blocking on it is a lie.

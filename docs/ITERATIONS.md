@@ -69,3 +69,9 @@
 - **改了什么**：`secret-literal` 在 `SECRET_NAME` 命中后先取出引号里的值，`PLACEHOLDER` 匹配 `<…>`、`${…}`、`***`、`xxx`、`…`、`change_me`、`your-…`、`example…`、`placeholder`、`dummy`、`fake`、`sample`、`redacted`、`todo` 就不报；`ghp_…`/`sk-…`/`AKIA…`/私钥头这些形状照旧报。新增 2 条用例（8 种占位值都静默、真实十六进制值仍 fail）。
 - **为什么**：真跑出来的——`config.example.py` 里 `API_KEY = "CHANGE_ME"`、`PASSWORD = "your-password-here"` 被判 2 个 fail，而这正是每个仓库的示例配置该写的东西。**一有示例配置就报两个 fail，第三次之后没人再读这条规则**。
 - **验证**：45 个测试全过（HEAD 43）；同一个 `config.example.py` 从 `2 fail` 变成 `0 fail, 1 warn`，exit 0。
+
+### #11 非 ASCII 文件名要照原样写出来
+
+- **改了什么**：`read_diff()` 的 git 调用加 `-c core.quotePath=false`——`üñí çode.py` 这类路径不再被转成 `"\303\274\303\261…"` 的八进制转义，终端、`--json`、`--serve` 都拿真实路径。新增 1 条用例（非 ASCII 文件名扫出来必须与磁盘一致）。
+- **为什么**：真跑出来的——暂存区里 `üñí çode.py` 在报告里写成 `\303\274\303\261\303\255 \303\247ode.py`，那是 git 的默认转义；**报告里给出的路径，人是要照着去改文件的**，八进制转义拿去 grep 都搜不到。
+- **验证**：46 个测试全过（HEAD 45）；同一暂存区现在输出 `WARN  üñí çode.py:1`，JSON 里也是原名。

@@ -1,7 +1,8 @@
 """The parser is the only place that reads git's own text."""
 import unittest
 
-from diffbrief.diff import parse
+from diffbrief.diff import parse, read_diff
+from tests.test_cli import RepoCase, git
 
 TWO_FILES = '''diff --git a/src/app.py b/src/app.py
 index 1111111..2222222 100644
@@ -22,6 +23,15 @@ index 0000000..3333333
 +hello
 +world
 '''
+
+
+class PathTests(RepoCase):
+    def test_a_non_ascii_path_is_not_octal_escaped(self) -> None:
+        name = "üñí çode.py"
+        (self.repo / name).write_text('console.log("x")\n')
+        git("add", "-A", cwd=self.repo)
+        files = read_diff(self.repo, staged=True)
+        self.assertEqual([file.path for file in files], [name])
 
 
 class ParseTests(unittest.TestCase):
