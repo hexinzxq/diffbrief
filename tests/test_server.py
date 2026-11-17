@@ -61,6 +61,12 @@ class ServerTests(RepoCase):
         self.assertEqual(data["files"], 0)
         self.assertEqual(data["excluded"], 1)
 
+    def test_the_page_says_when_files_were_skipped(self) -> None:
+        # The terminal says "(N file(s) skipped by --exclude)"; a page that
+        # silently drops them shows a smaller number with no explanation.
+        status, body = self.get("/")
+        self.assertIn("data.excluded", body.decode())
+
     def test_an_unknown_path_is_404_json(self) -> None:
         with self.assertRaises(urllib.error.HTTPError) as caught:
             self.get("/nope")

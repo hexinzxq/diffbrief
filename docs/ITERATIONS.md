@@ -87,3 +87,9 @@
 - **改了什么**：`look()` / `_tests_missing()` 接收 `excluded` 数，`report.build()` 透传；有跳过文件时提示改成 `1 source file(s) changed and no test did (among the 1 file(s) read; 1 skipped by --exclude)`。新增 1 条 CLI 用例（源码和测试都改了、但 `--exclude 'tests/*'`）。
 - **为什么**：真跑出来的——源码与测试一起改，加上 `--exclude 'tests/*'` 后报告仍写 `tests-missing: 1 source file(s) changed and no test did`。**那是关于我们根本没读的文件的断言**；总结行里明明有「1 file(s) skipped by --exclude」，finding 自己却装作没这回事。
 - **验证**：48 个测试全过（HEAD 47）；同一暂存区现在输出括注版本，总结行同时保留 `(1 file(s) skipped by --exclude)`。
+
+### #14 页面也要告诉你跳过了几个文件
+
+- **改了什么**：`static/index.html` 的 chips 多一枚虚线 chip「跳过 N（--exclude）」，页脚在 `data.excluded` 非零时补一句「· 跳过 N 个文件（--exclude）」；`tests/test_server.py` 加一条断言页面里确实读了 `data.excluded`。
+- **为什么**：终端早就写 `(N file(s) skipped by --exclude)`，页面只有「文件 N」这一枚 chip——**同一个报告换到页面上就把「我少读了什么」咽掉了**；页面上数字比终端小，人会以为工具漏了文件，而不是知道自己排除了它。
+- **验证**：49 个测试全过（HEAD 48）；`skillforge` 的 `sloplint.py` 扫这个页面仍是 `clean: 0 tell(s) wairable, 0 failures`；`--exclude` 起服务时 `/api/report` 的 `excluded` 为 1，页面据此显示跳过提示。
