@@ -54,7 +54,7 @@ diffbrief --json            # 给脚本/钩子
 diffbrief --exclude 'vendor/*' --exclude '*.min.js'   # 跳过不该看的文件（可重复）
 diffbrief --committed       # 只看提交，不看工作区（pre-push 该用这个）
 diffbrief --install-hook    # 写一个 pre-push：有 fail 就拦下这次 push（自己的旧脚本会被重写）
-diffbrief --serve           # 本地页面（默认 127.0.0.1:8765，5 秒轮询）
+diffbrief --serve           # 本地页面（默认 127.0.0.1:8765，5 秒轮询；--exclude/--committed 同样生效）
 ```
 
 `--exclude` 跳过的文件不会被静默丢掉：总结行会写 `(N file(s) skipped by --exclude)`，JSON 里有 `excluded`。

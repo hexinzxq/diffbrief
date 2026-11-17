@@ -67,7 +67,8 @@ def make_handler(root: Path, base: str | None = None, staged: bool = False,
 def serve(root: Path, base: str | None = None, staged: bool = False,
           host: str = "127.0.0.1", port: int = 8765,
           exclude: tuple[str, ...] = (), committed: bool = False) -> ThreadingHTTPServer:
-    return ThreadingHTTPServer((host, port), make_handler(root, base, staged))
+    return ThreadingHTTPServer((host, port),
+                               make_handler(root, base, staged, exclude, committed))
 
 
 __all__ = ["serve", "make_handler", "INDEX", "repo_root"]

@@ -75,3 +75,9 @@
 - **改了什么**：`read_diff()` 的 git 调用加 `-c core.quotePath=false`——`üñí çode.py` 这类路径不再被转成 `"\303\274\303\261…"` 的八进制转义，终端、`--json`、`--serve` 都拿真实路径。新增 1 条用例（非 ASCII 文件名扫出来必须与磁盘一致）。
 - **为什么**：真跑出来的——暂存区里 `üñí çode.py` 在报告里写成 `\303\274\303\261\303\255 \303\247ode.py`，那是 git 的默认转义；**报告里给出的路径，人是要照着去改文件的**，八进制转义拿去 grep 都搜不到。
 - **验证**：46 个测试全过（HEAD 45）；同一暂存区现在输出 `WARN  üñí çode.py:1`，JSON 里也是原名。
+
+### #12 `--serve` 要真的用上 `--exclude` 和 `--committed`
+
+- **改了什么**：`serve()` 之前把 `exclude` / `committed` 收下却只把前三个参数交给 `make_handler`，现在原样转发（`make_handler(root, base, staged, exclude, committed)`）。新增 1 条用例：带 `--exclude` 起服务，`/api/report` 的 `files` 必须是 0、`excluded` 必须是 1。
+- **为什么**：真跑出来的——`--serve --exclude 'dir with space/*'` 起页面后 `/api/report` 回 `files: 2, excluded: 0`，被排除的文件照旧出现在页面上。**命令行里写下的开关，不该在只有换了个输出口的时候失效**；页面上看到两行、终端看到一行，人只会怀疑自己。
+- **验证**：47 个测试全过（HEAD 46）；同一仓库重起服务后 `/api/report` 变成 `files: 1, excluded: 1`。

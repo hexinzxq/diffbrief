@@ -43,6 +43,24 @@ class ServerTests(RepoCase):
         self.assertIn("debug-statement", [finding["rule"] for finding in data["findings"]])
         self.assertIn("totals", data)
 
+    def test_exclude_reaches_the_page_not_only_the_terminal(self) -> None:
+        # `serve` used to drop its own exclude argument on the way to the
+        # handler, so the page showed files the CLI had been told to skip.
+        httpd = serve(self.repo, None, True, "127.0.0.1", 0,
+                      ("app.py",), False)
+        port = httpd.server_address[1]
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/report", timeout=5) as got:
+                data = json.loads(got.read())
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            thread.join(timeout=5)
+        self.assertEqual(data["files"], 0)
+        self.assertEqual(data["excluded"], 1)
+
     def test_an_unknown_path_is_404_json(self) -> None:
         with self.assertRaises(urllib.error.HTTPError) as caught:
             self.get("/nope")
