@@ -166,6 +166,21 @@ class ExitCodeTests(RepoCase):
         self.assertEqual(code, 1, out)
         self.assertIn("secret-literal", out)
 
+    def test_tests_missing_says_when_exclude_hid_the_tests(self) -> None:
+        (self.repo / "src").mkdir(exist_ok=True)
+        (self.repo / "src" / "app.py").write_text("x = 1\n")
+        (self.repo / "tests").mkdir(exist_ok=True)
+        (self.repo / "tests" / "test_app.py").write_text("def test_a(): pass\n")
+        git("add", "-A", cwd=self.repo)
+        git("commit", "-qm", "both", cwd=self.repo)
+        (self.repo / "src" / "app.py").write_text("x = 1\ny = 2\n")
+        (self.repo / "tests" / "test_app.py").write_text("def test_a(): pass\ndef test_b(): pass\n")
+        git("add", "-A", cwd=self.repo)
+        code, out = run("-C", str(self.repo), "--staged", "--exclude", "tests/*")
+        self.assertEqual(code, 0, out)
+        self.assertIn("skipped by --exclude", out)
+        self.assertIn("among the 1 file(s) read", out)
+
 
 if __name__ == "__main__":
     unittest.main()

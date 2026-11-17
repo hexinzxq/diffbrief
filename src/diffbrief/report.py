@@ -6,7 +6,7 @@ from .rules import ORDER, Finding, look
 
 
 def build(files: list[FileDiff], root: str, base: str, excluded: int = 0) -> dict:
-    findings = look(files)
+    findings = look(files, excluded)
     totals = {name: sum(1 for finding in findings if finding.severity == name) for name in ORDER}
     return {
         "root": root,

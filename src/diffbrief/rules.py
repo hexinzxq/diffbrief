@@ -92,7 +92,7 @@ def is_test(path: str) -> bool:
     return bool(TESTISH.search(path))
 
 
-def look(files: list[FileDiff]) -> list[Finding]:
+def look(files: list[FileDiff], excluded: int = 0) -> list[Finding]:
     findings: list[Finding] = []
     for file in files:
         if file.binary:
@@ -127,12 +127,12 @@ def look(files: list[FileDiff]) -> list[Finding]:
                 file.path, None, "note", "lockfile-churn",
                 f"{file.changed()} lines moved in a lockfile — skim for a bad version bump",
                 ""))
-    findings.extend(_tests_missing(files))
+    findings.extend(_tests_missing(files, excluded))
     findings.sort(key=lambda finding: (ORDER[finding.severity], finding.path, finding.line or 0))
     return findings
 
 
-def _tests_missing(files: list[FileDiff]) -> list[Finding]:
+def _tests_missing(files: list[FileDiff], excluded: int = 0) -> list[Finding]:
     """Code moved, no test moved with it: say so once, on the biggest file."""
     code = [file for file in files
             if not file.deleted and CODE.search(file.path) and not is_test(file.path)
@@ -143,7 +143,10 @@ def _tests_missing(files: list[FileDiff]) -> list[Finding]:
     if any(is_test(file.path) for file in files):
         return []
     biggest = max(code, key=lambda file: file.changed())
-    return [Finding(
-        biggest.path, None, "warn", "tests-missing",
-        f"{len(code)} source file(s) changed and no test did",
-        "")]
+    said = f"{len(code)} source file(s) changed and no test did"
+    if excluded:
+        # A test may well have changed in a file --exclude took away; claiming
+        # "no test did" would be a statement about files we never read.
+        said += (f" (among the {len(files)} file(s) read; "
+                 f"{excluded} skipped by --exclude)")
+    return [Finding(biggest.path, None, "warn", "tests-missing", said, "")]

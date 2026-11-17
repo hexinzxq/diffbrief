@@ -81,3 +81,9 @@
 - **改了什么**：`serve()` 之前把 `exclude` / `committed` 收下却只把前三个参数交给 `make_handler`，现在原样转发（`make_handler(root, base, staged, exclude, committed)`）。新增 1 条用例：带 `--exclude` 起服务，`/api/report` 的 `files` 必须是 0、`excluded` 必须是 1。
 - **为什么**：真跑出来的——`--serve --exclude 'dir with space/*'` 起页面后 `/api/report` 回 `files: 2, excluded: 0`，被排除的文件照旧出现在页面上。**命令行里写下的开关，不该在只有换了个输出口的时候失效**；页面上看到两行、终端看到一行，人只会怀疑自己。
 - **验证**：47 个测试全过（HEAD 46）；同一仓库重起服务后 `/api/report` 变成 `files: 1, excluded: 1`。
+
+### #13 被 `--exclude` 拿掉的测试，不能让 `tests-missing` 说「没有测试改了」
+
+- **改了什么**：`look()` / `_tests_missing()` 接收 `excluded` 数，`report.build()` 透传；有跳过文件时提示改成 `1 source file(s) changed and no test did (among the 1 file(s) read; 1 skipped by --exclude)`。新增 1 条 CLI 用例（源码和测试都改了、但 `--exclude 'tests/*'`）。
+- **为什么**：真跑出来的——源码与测试一起改，加上 `--exclude 'tests/*'` 后报告仍写 `tests-missing: 1 source file(s) changed and no test did`。**那是关于我们根本没读的文件的断言**；总结行里明明有「1 file(s) skipped by --exclude」，finding 自己却装作没这回事。
+- **验证**：48 个测试全过（HEAD 47）；同一暂存区现在输出括注版本，总结行同时保留 `(1 file(s) skipped by --exclude)`。
