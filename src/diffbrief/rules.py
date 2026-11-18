@@ -24,8 +24,8 @@ SECRET_VALUE = re.compile(
     r"(?i)\b(?:api[_-]?key|apikey|secret|token|password|passwd|pwd|access[_-]?key)\b"
     r"\s*[:=]\s*[\"']([^\"']{8,})[\"']")
 PLACEHOLDER = re.compile(
-    r"(?i)^(<[^>]*>|\$\{[^}]*\}|\*+|x{3,}|\.\.\.|"
-    r"change[-_ ]?me|your[-_ ][\w .-]*|example[a-z_-]*|placeholder|dummy|fake|sample|redacted|todo)$")
+    r"(?i)^(<[^>]*>|\{\{[^}]*\}\}|\$\{[^}]*\}|\*+|x{3,}|\.\.\.|"
+    r"change[-_ ]?me(?:[-_ ].*)?|your[-_ ][\w .-]*|example[a-z_-]*|placeholder|dummy|fake|sample|redacted|todo)$")
 SECRET_SHAPE = [
     re.compile(r"\b(ghp|gho|ghs|ghu)_[A-Za-z0-9]{20,}"),
     re.compile(r"\bsk-[A-Za-z0-9]{20,}"),
@@ -61,6 +61,12 @@ EXECUTABLE = re.compile(
 TEMPLATE = re.compile(
     r"(^|/)([^/]*\.)?(example|sample|template|dist|skeleton)\.(py|js|mjs|cjs|ts|tsx|jsx"
     r"|go|rs|java|rb|kt|swift|php|json|ya?ml|toml|ini|env|conf)$", re.I)
+# Line-oriented config formats write secrets bare: `password: hunter2…`,
+# `spring.datasource.password=…`. The quoted-key rule above never sees those.
+CONFIG = re.compile(r"\.(ya?ml|ini|properties|toml|cfg|conf|env)$", re.I)
+SECRET_BARE = re.compile(
+    r"(?i)\b(?:api[_-]?key|apikey|secret|token|password|passwd|pwd|access[_-]?key)\b"
+    r"\s*[:=]\s*([^\s\"'#]{8,})\s*$")
 TESTING = {"py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "rb", "kt", "swift", "php"}
 TESTISH = re.compile(
     r"(^|/)(tests?|__tests__|spec)/"                              # a tests/ directory
@@ -108,8 +114,10 @@ def look(files: list[FileDiff], excluded: int = 0) -> list[Finding]:
             text = line.text
             value = SECRET_VALUE.search(text)
             placeholder = bool(value and PLACEHOLDER.match(value.group(1).strip()))
-            if (SECRET_NAME.search(text) and not placeholder) or any(
-                    shape.search(text) for shape in SECRET_SHAPE):
+            bare = SECRET_BARE.search(text) if CONFIG.search(file.path) else None
+            bare_leaks = bool(bare and not PLACEHOLDER.match(bare.group(1).strip()))
+            if ((SECRET_NAME.search(text) and not placeholder) or bare_leaks
+                    or any(shape.search(text) for shape in SECRET_SHAPE)):
                 findings.append(Finding(
                     file.path, line.new_no, "fail", "secret-literal",
                     "a key-shaped literal is being added", _mask(text)))

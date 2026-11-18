@@ -144,6 +144,22 @@ class RenameTests(unittest.TestCase):
                  added_file("conftest.py", "import pytest")]
         self.assertEqual(all_rules(look(files)).count("tests-missing"), 0)
 
+    def test_a_bare_secret_in_a_config_file_is_caught(self) -> None:
+        for path, line in (
+            ("values.yaml", "  password: hunter2hunter2"),
+            ("settings.ini", "password = anothersecret99"),
+            ("application.properties", "spring.datasource.password=Sup3rS3cret"),
+            ("app.toml", 'token = "abcdefgh12345"'),
+        ):
+            with self.subTest(path=path):
+                self.assertIn("secret-literal", rules(look([added_file(path, line)])))
+
+    def test_a_reference_in_a_config_file_is_not_a_secret(self) -> None:
+        for line in ("password: ${DB_PASSWORD}", "api_key: {{ .Values.key }}",
+                     "password: <your-password>", "token: CHANGE_ME_NOW"):
+            with self.subTest(line=line):
+                self.assertEqual(rules(look([added_file("values.yaml", line)])), [])
+
 class ShapeTests(unittest.TestCase):
     def test_a_huge_deletion_is_flagged_but_a_lockfile_is_not(self) -> None:
         findings = look([added_file("src/big.py", "still here", removed=40),

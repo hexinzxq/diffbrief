@@ -111,3 +111,9 @@
 - **改了什么**：`TESTISH` 补一条 `(^|/)(tests?|conftest)\.(py|js|mjs|cjs|ts|tsx|jsx)$`——Django 的 `app/tests.py`、根目录 `conftest.py` 都算测试模块。新增 2 条用例。
 - **为什么**：真跑出来的——`app/models.py` 和 `app/tests.py` 一起改，报告写 `tests-missing: 2 source file(s) changed and no test did`：**把测试模块自己算成了「改动的源码」，然后说没有测试被改**。原来只认 `tests/` 目录和 `test_x.py` 前缀，不认 Django 这种按 app 放 `tests.py` 的写法。
 - **验证**：54 个测试全过（HEAD 52）；同一暂存区从 `0 fail, 1 warn` 变成 `clean — nothing worth flagging`。
+
+### #18 配置文件里的密钥是不带引号的
+
+- **改了什么**：新增 `CONFIG = /\.(ya?ml|ini|properties|toml|cfg|conf|env)$/` 与 `SECRET_BARE`（`password: hunter2…`、`spring.datasource.password=…`），对配置类文件额外匹配裸值；`PLACEHOLDER` 补 `{{ … }}` 与 `CHANGE_ME_*`。新增 2 条用例（4 种配置格式都报；`${DB_PASSWORD}`、`{{ .Values.key }}`、`<your-password>`、`CHANGE_ME_NOW` 不报）。
+- **为什么**：真跑出来的——`application.properties` 的 `spring.datasource.password=Sup3rS3cretValue`、`values.yaml` 的 `password: hunter2hunter2`、`settings.ini` 的 `password = anothersecret99` 三个文件一起暂存，报告是 `clean — nothing worth flagging`。**规则只认带引号的字面量，而配置文件里没人给密码加引号**，最该看的地方反而是盲区。
+- **验证**：56 个测试全过（HEAD 54）；同一暂存区现在 `3 fail` 并逐行打出打码证据，引用型占位值仍然静默。
