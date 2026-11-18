@@ -99,3 +99,9 @@
 - **改了什么**：`main()` 开头拦一手：两个都给就 `diffbrief: --staged reads the index and --committed reads the commits; pick one`、exit 2。新增 1 条用例。
 - **为什么**：真跑出来的——`--staged --committed` 一起给时 `committed` 悄悄赢了，输出还写 `against the index`（因为标签只看 `staged`）。**两个开关读的是两个不同的东西，一个默默盖掉另一个，标签还替它圆谎**：用户以为在看暂存区，实际看的是提交。
 - **验证**：50 个测试全过（HEAD 49）；同一目录现在直接 `exit 2` 并把两个选项读什么讲清楚。
+
+### #16 模板配置不是要补测试的源码
+
+- **改了什么**：新增 `TEMPLATE = re.compile(r"(^|/)([^/]*\\.)?(example|sample|template|dist|skeleton)\\.(py|js|…|env|conf)$", re.I)`，`_tests_missing()` 的候选过滤掉它。新增 2 条用例（`config.example.py` / `settings.sample.py` / `conf.template.py` 都不报；普通的 `config.py` 照旧报）。
+- **为什么**：真跑出来的——`config.example.py`（`API_KEY = "CHANGE_ME"` 那种示例文件）被判 `tests-missing: 1 source file(s) changed and no test did`。**示例配置是给人复制的东西，不是要跑的东西**，要求它带测试等于要求模板自己被测试。
+- **验证**：52 个测试全过（HEAD 50）；同一个暂存区从 `0 fail, 1 warn` 变成 `clean — nothing worth flagging`。

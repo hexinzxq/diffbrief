@@ -122,6 +122,16 @@ class RenameTests(unittest.TestCase):
         findings = look([added_file("config.py", 'API_KEY = "9f8e7d6c5b4a3210"')])
         self.assertIn("secret-literal", rules(findings))
 
+    def test_a_template_config_is_not_asked_for_a_test(self) -> None:
+        for name in ("config.example.py", "settings.sample.py", "conf.template.py"):
+            with self.subTest(name=name):
+                findings = look([added_file(name, "x = 1")])
+                self.assertEqual(all_rules(findings).count("tests-missing"), 0)
+
+    def test_an_ordinary_module_still_asks_for_a_test(self) -> None:
+        findings = look([added_file("config.py", "x = 1")])
+        self.assertIn("tests-missing", all_rules(findings))
+
 class ShapeTests(unittest.TestCase):
     def test_a_huge_deletion_is_flagged_but_a_lockfile_is_not(self) -> None:
         findings = look([added_file("src/big.py", "still here", removed=40),

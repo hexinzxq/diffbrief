@@ -56,6 +56,11 @@ CODE = re.compile(r"\.(py|js|mjs|cjs|ts|tsx|jsx|go|rs|java|rb|kt|swift|php|c|h|c
 EXECUTABLE = re.compile(
     r"\.(py|js|mjs|cjs|ts|tsx|jsx|go|rs|java|rb|kt|swift|php|c|h|cc|cpp|cs"
     r"|sh|bash|zsh|pl|lua|r|ex|exs|clj|scala|dart|vue|svelte)$")
+# `config.example.py` is the thing you copy, not the thing that runs: asking it
+# to bring a test along is asking a template to be tested.
+TEMPLATE = re.compile(
+    r"(^|/)([^/]*\.)?(example|sample|template|dist|skeleton)\.(py|js|mjs|cjs|ts|tsx|jsx"
+    r"|go|rs|java|rb|kt|swift|php|json|ya?ml|toml|ini|env|conf)$", re.I)
 TESTING = {"py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "rb", "kt", "swift", "php"}
 TESTISH = re.compile(
     r"(^|/)(tests?|__tests__|spec)/|(^|/)(test_[^/]+|[^/]+_test\.(py|go)|[^/]+\.(test|spec)\.[jt]sx?)$"
@@ -135,7 +140,8 @@ def look(files: list[FileDiff], excluded: int = 0) -> list[Finding]:
 def _tests_missing(files: list[FileDiff], excluded: int = 0) -> list[Finding]:
     """Code moved, no test moved with it: say so once, on the biggest file."""
     code = [file for file in files
-            if not file.deleted and CODE.search(file.path) and not is_test(file.path)
+            if (not file.deleted and CODE.search(file.path) and not is_test(file.path)
+                and not TEMPLATE.search(file.path))
             and file.changed()  # a pure rename or mode change moves no line
             and file.path.rsplit(".", 1)[-1] in TESTING]
     if not code:

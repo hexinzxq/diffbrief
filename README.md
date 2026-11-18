@@ -35,7 +35,7 @@ diffbrief 只做一件更小的事：
 | `secret-literal` | fail | 新增行里出现 `api_key/secret/token/password … = "…"`，或 `ghp_/gho_/sk-/AKIA…`、私钥头。证据打码；模板占位值（`CHANGE_ME`、`your-…-here`、`${API_KEY}`、`<token>`、`dummy`、`redacted`）不算 |
 | `debug-statement` | warn | **可执行文件**的新增行里有 `console.log(`、`debugger`、`pdb.set_trace()`、`breakpoint()`、`binding.pry`、`dbg!(`（文档里举例不算） |
 | `large-deletion` | warn | 单个文件删 ≥30 行且加 ≤5 行（lockfile 除外） |
-| `tests-missing` | warn | 改了源码（py/js/ts/go/rs/java/rb/kt/swift/php）却没有任何测试文件跟着改；纯改名（一行没动）不算；用 `--exclude` 跳过文件时提示里会说明「只算了读过的那些」 |
+| `tests-missing` | warn | 改了源码（py/js/ts/go/rs/java/rb/kt/swift/php）却没有任何测试文件跟着改；纯改名（一行没动）不算；模板文件（`config.example.py` 这类）不算；用 `--exclude` 跳过文件时提示里会说明「只算了读过的那些」 |
 | `todo-added` | note | 新增行里以注释形式出现 `TODO` / `FIXME` / `XXX`（`#`、`//`、`<!--`、行首、列表项；字符串里的这个词不算） |
 | `lockfile-churn` | note | `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `poetry.lock` / `Cargo.lock` / `uv.lock` / `go.sum` 等改动 ≥200 行 |
 
