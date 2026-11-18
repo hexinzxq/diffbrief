@@ -15,6 +15,28 @@ class InstallHookTests(RepoCase):
         # process happens to stand.
         return (raw if raw.is_absolute() else base / raw) / "pre-push"
 
+    def test_excludes_are_baked_into_the_script(self) -> None:
+        code, out = run("-C", str(self.repo), "--install-hook",
+                        "--exclude", "vendor/*", "--exclude", "dist/*")
+        self.assertEqual(code, 0)
+        self.assertIn("skipping: vendor/*, dist/*", out)
+        text = self.hook().read_text()
+        self.assertIn("--exclude 'vendor/*'", text)
+        self.assertIn("--exclude 'dist/*'", text)
+
+    def test_reinstalling_with_new_excludes_rewrites_the_hook(self) -> None:
+        run("-C", str(self.repo), "--install-hook")
+        self.assertNotIn("--exclude", self.hook().read_text())
+        code, out = run("-C", str(self.repo), "--install-hook", "--exclude", "vendor/*")
+        self.assertEqual(code, 0)
+        self.assertIn("rewrote", out)
+        self.assertIn("--exclude 'vendor/*'", self.hook().read_text())
+
+    def test_a_glob_with_a_space_stays_one_argument(self) -> None:
+        run("-C", str(self.repo), "--install-hook", "--exclude", "dir with space/*")
+        self.assertIn("--exclude 'dir with space/*'", self.hook().read_text())
+
+
     def test_installing_writes_an_executable_hook_that_runs_diffbrief(self) -> None:
         code, out = run("-C", str(self.repo), "--install-hook")
         self.assertEqual(code, 0)

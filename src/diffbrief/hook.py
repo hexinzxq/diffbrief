@@ -7,12 +7,13 @@ somebody already wrote.
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 from pathlib import Path
 
 from .diff import GitError
 
-SCRIPT = """#!/bin/sh
+TEMPLATE = """#!/bin/sh
 # Installed by `diffbrief --install-hook`.
 #
 # Runs the same report you can run by hand, but only over the commits being
@@ -20,12 +21,25 @@ SCRIPT = """#!/bin/sh
 # Exit 1 stops the push when the report has a `fail`; anything the tool cannot
 # run is not a reason to block a push, so a missing command only prints a note.
 if command -v diffbrief >/dev/null 2>&1; then
-    exec diffbrief --committed
+    exec diffbrief --committed{excludes}
 fi
 echo "diffbrief: not on PATH, so this hook is not checking anything" >&2
 echo "diffbrief: pip install -e . , or rm $(git rev-parse --git-path hooks)/pre-push" >&2
 exit 0
 """
+
+
+def script(exclude: tuple[str, ...] = ()) -> str:
+    """The hook text for a given set of --exclude globs.
+
+    The flags have to be baked in: a hook runs without a shell history to read,
+    so whatever the tool refuses to look at must already be in the script.
+    """
+    flags = "".join(f" --exclude {shlex.quote(glob)}" for glob in exclude)
+    return TEMPLATE.replace("{excludes}", flags)
+
+
+SCRIPT = script()
 
 
 def hooks_dir(root: Path) -> Path:
@@ -41,7 +55,7 @@ def hooks_dir(root: Path) -> Path:
 MARKER = "Installed by `diffbrief --install-hook`"
 
 
-def install(root: Path) -> tuple[Path, str]:
+def install(root: Path, exclude: tuple[str, ...] = ()) -> tuple[Path, str]:
     """Write the hook. Returns (path, status) where status is new, updated or unchanged.
 
     An older copy of our own script is rewritten: the script is the part of this
@@ -49,17 +63,18 @@ def install(root: Path) -> tuple[Path, str]:
     place means the hook checks something the tool no longer does.
     """
     target = hooks_dir(root) / "pre-push"
+    wanted = script(exclude)
     if target.exists():
         current = target.read_text()
         if MARKER not in current:
             raise GitError(f"{target} already exists and was not written by diffbrief — "
                            "move it aside first, this will not overwrite your hook")
-        if current == SCRIPT:
+        if current == wanted:
             return target, "unchanged"
-        target.write_text(SCRIPT)
+        target.write_text(wanted)
         os.chmod(target, 0o755)
         return target, "updated"
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(SCRIPT)
+    target.write_text(wanted)
     os.chmod(target, 0o755)
     return target, "new"

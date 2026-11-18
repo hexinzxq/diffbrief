@@ -117,3 +117,9 @@
 - **改了什么**：新增 `CONFIG = /\.(ya?ml|ini|properties|toml|cfg|conf|env)$/` 与 `SECRET_BARE`（`password: hunter2…`、`spring.datasource.password=…`），对配置类文件额外匹配裸值；`PLACEHOLDER` 补 `{{ … }}` 与 `CHANGE_ME_*`。新增 2 条用例（4 种配置格式都报；`${DB_PASSWORD}`、`{{ .Values.key }}`、`<your-password>`、`CHANGE_ME_NOW` 不报）。
 - **为什么**：真跑出来的——`application.properties` 的 `spring.datasource.password=Sup3rS3cretValue`、`values.yaml` 的 `password: hunter2hunter2`、`settings.ini` 的 `password = anothersecret99` 三个文件一起暂存，报告是 `clean — nothing worth flagging`。**规则只认带引号的字面量，而配置文件里没人给密码加引号**，最该看的地方反而是盲区。
 - **验证**：56 个测试全过（HEAD 54）；同一暂存区现在 `3 fail` 并逐行打出打码证据，引用型占位值仍然静默。
+
+### #19 装钩子时的 `--exclude` 要写进脚本
+
+- **改了什么**：`hook.py` 的 `SCRIPT` 常量换成 `script(exclude)` + `TEMPLATE`，`install(root, exclude=())` 把 `--exclude` 逐个 `shlex.quote` 进 `exec diffbrief --committed` 那一行；`--install-hook` 把 `args.exclude` 传进去，输出后面注明 `(skipping: …)`；`install()` 比较的是「按当前 exclude 生成的脚本」，所以换排除规则再装一次会 `rewrote` 而不是「已经装过了」。新增 3 条用例。
+- **为什么**：真跑出来的——`diffbrief --install-hook --exclude 'vendor/*'` 输出「installed」，可 `.git/hooks/pre-push` 里只有 `exec diffbrief --committed`：**排除规则被收下又丢掉**。后果是 vendored 目录里有个像密钥的字符串，每次 push 都拦一次，而现场能看到的只有报错，没人知道要手改钩子；再装一次还会被「已经是这一版」挡住。
+- **验证**：59 个测试全过（HEAD 56）；真仓库里 `--exclude 'vendor/*' --exclude 'dist/*'` 装完，脚本那行是 `exec diffbrief --committed --exclude 'vendor/*' --exclude 'dist/*'`，重复安装回「matches this version」。
