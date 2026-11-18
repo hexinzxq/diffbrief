@@ -63,7 +63,9 @@ TEMPLATE = re.compile(
     r"|go|rs|java|rb|kt|swift|php|json|ya?ml|toml|ini|env|conf)$", re.I)
 TESTING = {"py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "rb", "kt", "swift", "php"}
 TESTISH = re.compile(
-    r"(^|/)(tests?|__tests__|spec)/|(^|/)(test_[^/]+|[^/]+_test\.(py|go)|[^/]+\.(test|spec)\.[jt]sx?)$"
+    r"(^|/)(tests?|__tests__|spec)/"                              # a tests/ directory
+    r"|(^|/)(test_[^/]+|[^/]+_tests?\.(py|go)|[^/]+\.(test|spec)\.[jt]sx?)$"
+    r"|(^|/)(tests?|conftest)\.(py|js|mjs|cjs|ts|tsx|jsx)$"       # Django's app/tests.py
 )
 
 BIG_DELETION = 30  # removed lines, with almost nothing added back

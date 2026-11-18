@@ -105,3 +105,9 @@
 - **改了什么**：新增 `TEMPLATE = re.compile(r"(^|/)([^/]*\\.)?(example|sample|template|dist|skeleton)\\.(py|js|…|env|conf)$", re.I)`，`_tests_missing()` 的候选过滤掉它。新增 2 条用例（`config.example.py` / `settings.sample.py` / `conf.template.py` 都不报；普通的 `config.py` 照旧报）。
 - **为什么**：真跑出来的——`config.example.py`（`API_KEY = "CHANGE_ME"` 那种示例文件）被判 `tests-missing: 1 source file(s) changed and no test did`。**示例配置是给人复制的东西，不是要跑的东西**，要求它带测试等于要求模板自己被测试。
 - **验证**：52 个测试全过（HEAD 50）；同一个暂存区从 `0 fail, 1 warn` 变成 `clean — nothing worth flagging`。
+
+### #17 `app/tests.py` 就是测试文件
+
+- **改了什么**：`TESTISH` 补一条 `(^|/)(tests?|conftest)\.(py|js|mjs|cjs|ts|tsx|jsx)$`——Django 的 `app/tests.py`、根目录 `conftest.py` 都算测试模块。新增 2 条用例。
+- **为什么**：真跑出来的——`app/models.py` 和 `app/tests.py` 一起改，报告写 `tests-missing: 2 source file(s) changed and no test did`：**把测试模块自己算成了「改动的源码」，然后说没有测试被改**。原来只认 `tests/` 目录和 `test_x.py` 前缀，不认 Django 这种按 app 放 `tests.py` 的写法。
+- **验证**：54 个测试全过（HEAD 52）；同一暂存区从 `0 fail, 1 warn` 变成 `clean — nothing worth flagging`。

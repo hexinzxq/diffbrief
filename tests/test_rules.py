@@ -132,6 +132,18 @@ class RenameTests(unittest.TestCase):
         findings = look([added_file("config.py", "x = 1")])
         self.assertIn("tests-missing", all_rules(findings))
 
+    def test_a_module_named_tests_counts_as_the_test_file(self) -> None:
+        # Django puts tests in app/tests.py; the rule used to call that "no test did"
+        # and count the test module itself as one of the changed source files.
+        files = [added_file("app/models.py", "y = 2"),
+                 added_file("app/tests.py", "class T(TestCase): pass")]
+        self.assertEqual(all_rules(look(files)).count("tests-missing"), 0)
+
+    def test_conftest_also_counts(self) -> None:
+        files = [added_file("app/models.py", "y = 2"),
+                 added_file("conftest.py", "import pytest")]
+        self.assertEqual(all_rules(look(files)).count("tests-missing"), 0)
+
 class ShapeTests(unittest.TestCase):
     def test_a_huge_deletion_is_flagged_but_a_lockfile_is_not(self) -> None:
         findings = look([added_file("src/big.py", "still here", removed=40),
