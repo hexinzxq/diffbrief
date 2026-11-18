@@ -157,7 +157,12 @@ def _exists(root: Path, ref: str) -> bool:
     return done.returncode == 0
 
 
-def resolve_base(root: Path, base: str | None) -> str:
+# The diff against this tree is "everything the branch adds", which is exactly
+# what a first push sends. Spelled out because the name is not memorable.
+EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+
+
+def resolve_base(root: Path, base: str | None, *, for_commits: bool = False) -> str:
     """What to diff against.
 
     The promise is "what you are about to push", so an upstream is not enough:
@@ -187,7 +192,24 @@ def resolve_base(root: Path, base: str | None) -> str:
     # brand-new branch silently.
     if _exists(root, "origin/HEAD"):
         return "origin/HEAD"
+    if for_commits:
+        # No upstream, no remote copy, no origin/HEAD (`git remote add origin …`
+        # never sets it). Falling back to HEAD here compares HEAD with itself and
+        # passes the whole branch unseen; against the empty tree it is a full read.
+        return EMPTY_TREE
     return "HEAD"
+
+
+NO_REMOTE = "every commit on this branch (the remote has no copy yet)"
+
+
+def base_label(root: Path, base: str | None, staged: bool = False,
+               committed: bool = False) -> str:
+    """Name the thing the diff was read against, in words a person can check."""
+    if staged:
+        return "the index"
+    start = resolve_base(root, base, for_commits=committed)
+    return NO_REMOTE if start == EMPTY_TREE else start
 
 
 def excluded(path: str, patterns: tuple[str, ...]) -> bool:
@@ -210,7 +232,13 @@ def read_diff(root: Path, base: str | None = None, staged: bool = False,
     if committed:
         # Only the commits: a secret you pasted into the working copy while
         # debugging is not part of the push, and blocking on it is a lie.
-        args.append(f"{resolve_base(root, base)}...HEAD")
+        start = resolve_base(root, base, for_commits=True)
+        # `A...B` needs two commits; the empty tree is not one, so a branch with
+        # no remote side at all is read as tree-vs-commit instead.
+        if start == EMPTY_TREE:
+            args.extend([start, "HEAD"])
+        else:
+            args.append(f"{start}...HEAD")
     elif staged:
         args.append("--cached")
     else:

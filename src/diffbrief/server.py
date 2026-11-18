@@ -10,7 +10,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .diff import excluded, read_diff, repo_root, resolve_base
+from .diff import base_label, excluded, read_diff, repo_root
 from .report import build
 
 STATIC = Path(__file__).parent / "static"
@@ -20,7 +20,7 @@ INDEX = STATIC / "index.html"
 def make_handler(root: Path, base: str | None = None, staged: bool = False,
                  exclude: tuple[str, ...] = (), committed: bool = False):
     def payload() -> dict:
-        resolved = "the index" if staged else resolve_base(root, base)
+        resolved = base_label(root, base, staged, committed)
         all_files = read_diff(root, base, staged, committed=committed)
         files = [file for file in all_files if not excluded(file.path, exclude)]
         return build(files, str(root), resolved, excluded=len(all_files) - len(files))

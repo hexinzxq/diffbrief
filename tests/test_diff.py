@@ -1,7 +1,7 @@
 """The parser is the only place that reads git's own text."""
 import unittest
 
-from diffbrief.diff import parse, read_diff
+from diffbrief.diff import base_label, parse, read_diff
 from tests.test_cli import RepoCase, git
 
 TWO_FILES = '''diff --git a/src/app.py b/src/app.py
@@ -33,6 +33,29 @@ class PathTests(RepoCase):
         files = read_diff(self.repo, staged=True)
         self.assertEqual([file.path for file in files], [name])
 
+
+    def test_a_first_push_is_read_against_the_empty_tree(self) -> None:
+        # origin exists but origin/HEAD is not set (`git remote add origin …`),
+        # and this branch was never pushed: comparing against HEAD would be
+        # HEAD...HEAD, i.e. nothing, and the hook would pass the branch unseen.
+        git("remote", "add", "origin", str(self.repo / "nowhere.git"), cwd=self.repo)
+        git("checkout", "-q", "-b", "feature", cwd=self.repo)
+        (self.repo / "leak.py").write_text('PASSWORD = "hunter2hunter2"\n')
+        git("add", "-A", cwd=self.repo)
+        git("commit", "-qm", "add config", cwd=self.repo)
+        files = read_diff(self.repo, committed=True)
+        self.assertIn("leak.py", [file.path for file in files])
+
+    def test_the_label_says_there_is_no_remote_copy(self) -> None:
+        git("remote", "add", "origin", str(self.repo / "nowhere.git"), cwd=self.repo)
+        git("checkout", "-q", "-b", "feature", cwd=self.repo)
+        self.assertIn("no copy yet", base_label(self.repo, None, committed=True))
+
+    def test_a_branch_with_an_upstream_keeps_using_it(self) -> None:
+        git("remote", "add", "origin", str(self.repo / "nowhere.git"), cwd=self.repo)
+        git("update-ref", "refs/remotes/origin/main", "HEAD", cwd=self.repo)
+        git("branch", "--set-upstream-to=origin/main", "main", cwd=self.repo)
+        self.assertEqual(base_label(self.repo, None, committed=True), "@{upstream}")
 
 class ParseTests(unittest.TestCase):
     def test_two_files_are_two_entries(self) -> None:

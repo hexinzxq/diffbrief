@@ -10,7 +10,7 @@ import json
 import sys
 from pathlib import Path
 
-from .diff import GitError, excluded, read_diff, repo_root, resolve_base
+from .diff import GitError, base_label, excluded, read_diff, repo_root, resolve_base
 from .hook import install as install_hook
 from .report import build, render, worst
 from .server import serve
@@ -74,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         # Label what was actually read: --staged diffs the index, and calling
         # that "against @{upstream}" is the kind of label that hides a mistake.
-        resolved = "the index" if args.staged else resolve_base(root, args.base)
+        resolved = base_label(root, args.base, args.staged, args.committed)
         all_files = read_diff(root, args.base, args.staged, committed=args.committed)
         files = [file for file in all_files
                  if not excluded(file.path, tuple(args.exclude))]

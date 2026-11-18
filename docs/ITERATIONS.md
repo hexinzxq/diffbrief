@@ -123,3 +123,9 @@
 - **改了什么**：`hook.py` 的 `SCRIPT` 常量换成 `script(exclude)` + `TEMPLATE`，`install(root, exclude=())` 把 `--exclude` 逐个 `shlex.quote` 进 `exec diffbrief --committed` 那一行；`--install-hook` 把 `args.exclude` 传进去，输出后面注明 `(skipping: …)`；`install()` 比较的是「按当前 exclude 生成的脚本」，所以换排除规则再装一次会 `rewrote` 而不是「已经装过了」。新增 3 条用例。
 - **为什么**：真跑出来的——`diffbrief --install-hook --exclude 'vendor/*'` 输出「installed」，可 `.git/hooks/pre-push` 里只有 `exec diffbrief --committed`：**排除规则被收下又丢掉**。后果是 vendored 目录里有个像密钥的字符串，每次 push 都拦一次，而现场能看到的只有报错，没人知道要手改钩子；再装一次还会被「已经是这一版」挡住。
 - **验证**：59 个测试全过（HEAD 56）；真仓库里 `--exclude 'vendor/*' --exclude 'dist/*'` 装完，脚本那行是 `exec diffbrief --committed --exclude 'vendor/*' --exclude 'dist/*'`，重复安装回「matches this version」。
+
+### #20 第一次 push 的分支要对着空树读
+
+- **改了什么**：`resolve_base(..., for_commits=True)` 在「没有 upstream、没有 `origin/<branch>`、也没有 `origin/HEAD`」时不再退回 `HEAD`，而是返回空树 `4b825dc…`；`--committed` 因此把 `A...HEAD` 换成「空树 HEAD」两段式（`A...B` 要两个提交，空树不是提交）。新增 `base_label()`，这种情形在报告里写 `against every commit on this branch (the remote has no copy yet)`，不再冒充 `HEAD`；`cli` 与 `server` 共用。新增 3 条用例。
+- **为什么**：真跑出来的——`git remote add origin …` 起的仓库不会设置 `origin/HEAD`，新分支第一次 push 时 `resolve_base` 落到 `HEAD`，于是 `HEAD...HEAD` 为空，报告写 `no changes against HEAD — nothing to read`、退出码 0：**一条带明文密码的新分支，钩子当场放行**。这是工具最想抓的那一类 push，恰好完全没看。
+- **验证**：62 个测试全过（HEAD 59）；同一个仓库现在报 `2 file(s) … against every commit on this branch (the remote has no copy yet) — 1 fail`、exit 1；已有 upstream 的分支仍然是 `against @{upstream}`。
