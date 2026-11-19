@@ -162,6 +162,10 @@ def _exists(root: Path, ref: str) -> bool:
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 
+def has_commits(root: Path) -> bool:
+    return _exists(root, "HEAD")
+
+
 def resolve_base(root: Path, base: str | None, *, for_commits: bool = False) -> str:
     """What to diff against.
 
@@ -229,6 +233,11 @@ def read_diff(root: Path, base: str | None = None, staged: bool = False,
     # and that is the path a person then has to type to find the file.
     args = ["-c", "core.quotePath=false", "diff", "--no-color",
             "--find-renames", "--unified=3"]
+    if (committed or not staged) and base is None and not has_commits(root):
+        # A brand-new repository has no HEAD to compare against; git's own
+        # "ambiguous argument 'HEAD'" is not a sentence anybody can act on.
+        raise GitError("this repository has no commits yet — `diffbrief --staged` "
+                       "reads the index, otherwise make a first commit")
     if committed:
         # Only the commits: a secret you pasted into the working copy while
         # debugging is not part of the push, and blocking on it is a lie.

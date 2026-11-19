@@ -135,3 +135,9 @@
 - **改了什么**：`--path PATHSPEC`（可重复，git pathspec 语法）接上 `read_diff()` 里一直挂着的 `paths` 参数（`git diff … -- <路径>`）；`--serve` 也透传到 `/api/report`；`server.make_handler/serve` 加 `paths` 参数。新增 2 条用例（只看 `packages/api` 时不报 `packages/web/leak.py`；不给 `--path` 时照旧报）。
 - **为什么**：真跑出来的——monorepo 里 API 包改了、web 包混进一个 `PASSWORD = "hunter2hunter2"`，`diffbrief --staged` 只能把两个包一起读，没法只交代自己改的那包；而 `read_diff(paths=...)` 这个参数早就写好了，CLI 从来没接出来，等于**能力在库里、开关在墙外**。
 - **验证**：64 个测试全过（HEAD 62）；同一仓库 `--path packages/api` 报 `1 file(s) … 0 fail, 1 warn`，不给则 `1 fail` 并列出 `packages/web/leak.py`。
+
+### #22 还没有提交的仓库，说人话
+
+- **改了什么**：新增 `has_commits(root)`；`read_diff()` 在「不是 `--staged`、也不是显式 `--base`、而仓库一个提交都没有」时抛 `GitError`：`this repository has no commits yet — diffbrief --staged reads the index, otherwise make a first commit`（exit 2）。`--committed` 同理。新增 2 条用例（全新仓库报这句话；全新仓库 `--staged` 照样能查暂存区）。
+- **为什么**：真跑出来的——`git init` 完、文件还没提交时跑 `diffbrief`，用户看到的是 git 自己的 `fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.`：**这是 git 的语法错误，不是一句他能照做的话**。而这时 `--staged` 明明可用，工具却没提。
+- **验证**：66 个测试全过（HEAD 64）；同一个全新仓库现在回那一句、exit 2；`--staged` 照旧报出文件。

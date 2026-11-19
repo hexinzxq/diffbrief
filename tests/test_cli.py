@@ -43,6 +43,26 @@ class RepoCase(unittest.TestCase):
 
 
 class ExitCodeTests(RepoCase):
+    def test_a_repository_with_no_commits_is_a_sentence(self) -> None:
+        fresh = Path(self.tmp.name) / "fresh"
+        fresh.mkdir()
+        git("init", "-b", "main", cwd=fresh)
+        (fresh / "a.py").write_text("x = 1\n")
+        code, out = run("-C", str(fresh))
+        self.assertEqual(code, 2)
+        self.assertIn("no commits yet", out)
+        self.assertIn("--staged", out)  # it names the one thing that does work
+
+    def test_no_commits_still_reads_the_staged_index(self) -> None:
+        fresh = Path(self.tmp.name) / "fresh2"
+        fresh.mkdir()
+        git("init", "-b", "main", cwd=fresh)
+        (fresh / "a.py").write_text('PASSWORD = "hunter2hunter2"\n')
+        git("add", "-A", cwd=fresh)
+        code, out = run("-C", str(fresh), "--staged")
+        self.assertEqual(code, 1)
+        self.assertIn("a.py", out)
+
     def test_path_reads_only_that_package(self) -> None:
         # a monorepo: the API package changed, and a secret leaks in the web one
         (self.repo / "packages/api").mkdir(parents=True)
