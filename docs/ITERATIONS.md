@@ -129,3 +129,9 @@
 - **改了什么**：`resolve_base(..., for_commits=True)` 在「没有 upstream、没有 `origin/<branch>`、也没有 `origin/HEAD`」时不再退回 `HEAD`，而是返回空树 `4b825dc…`；`--committed` 因此把 `A...HEAD` 换成「空树 HEAD」两段式（`A...B` 要两个提交，空树不是提交）。新增 `base_label()`，这种情形在报告里写 `against every commit on this branch (the remote has no copy yet)`，不再冒充 `HEAD`；`cli` 与 `server` 共用。新增 3 条用例。
 - **为什么**：真跑出来的——`git remote add origin …` 起的仓库不会设置 `origin/HEAD`，新分支第一次 push 时 `resolve_base` 落到 `HEAD`，于是 `HEAD...HEAD` 为空，报告写 `no changes against HEAD — nothing to read`、退出码 0：**一条带明文密码的新分支，钩子当场放行**。这是工具最想抓的那一类 push，恰好完全没看。
 - **验证**：62 个测试全过（HEAD 59）；同一个仓库现在报 `2 file(s) … against every commit on this branch (the remote has no copy yet) — 1 fail`、exit 1；已有 upstream 的分支仍然是 `against @{upstream}`。
+
+### #21 `--path`：只看自己那一包
+
+- **改了什么**：`--path PATHSPEC`（可重复，git pathspec 语法）接上 `read_diff()` 里一直挂着的 `paths` 参数（`git diff … -- <路径>`）；`--serve` 也透传到 `/api/report`；`server.make_handler/serve` 加 `paths` 参数。新增 2 条用例（只看 `packages/api` 时不报 `packages/web/leak.py`；不给 `--path` 时照旧报）。
+- **为什么**：真跑出来的——monorepo 里 API 包改了、web 包混进一个 `PASSWORD = "hunter2hunter2"`，`diffbrief --staged` 只能把两个包一起读，没法只交代自己改的那包；而 `read_diff(paths=...)` 这个参数早就写好了，CLI 从来没接出来，等于**能力在库里、开关在墙外**。
+- **验证**：64 个测试全过（HEAD 62）；同一仓库 `--path packages/api` 报 `1 file(s) … 0 fail, 1 warn`，不给则 `1 fail` 并列出 `packages/web/leak.py`。

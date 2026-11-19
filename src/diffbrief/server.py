@@ -18,10 +18,12 @@ INDEX = STATIC / "index.html"
 
 
 def make_handler(root: Path, base: str | None = None, staged: bool = False,
-                 exclude: tuple[str, ...] = (), committed: bool = False):
+                 exclude: tuple[str, ...] = (), committed: bool = False,
+                 paths: tuple[str, ...] = ()):
     def payload() -> dict:
         resolved = base_label(root, base, staged, committed)
-        all_files = read_diff(root, base, staged, committed=committed)
+        all_files = read_diff(root, base, staged, list(paths) or None,
+                              committed=committed)
         files = [file for file in all_files if not excluded(file.path, exclude)]
         return build(files, str(root), resolved, excluded=len(all_files) - len(files))
 
@@ -66,9 +68,10 @@ def make_handler(root: Path, base: str | None = None, staged: bool = False,
 
 def serve(root: Path, base: str | None = None, staged: bool = False,
           host: str = "127.0.0.1", port: int = 8765,
-          exclude: tuple[str, ...] = (), committed: bool = False) -> ThreadingHTTPServer:
+          exclude: tuple[str, ...] = (), committed: bool = False,
+          paths: tuple[str, ...] = ()) -> ThreadingHTTPServer:
     return ThreadingHTTPServer((host, port),
-                               make_handler(root, base, staged, exclude, committed))
+                               make_handler(root, base, staged, exclude, committed, paths))
 
 
 __all__ = ["serve", "make_handler", "INDEX", "repo_root"]

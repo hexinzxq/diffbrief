@@ -27,6 +27,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="diff against REF (default: the upstream, else HEAD)")
     parser.add_argument("--exclude", action="append", default=[], metavar="GLOB",
                         help="skip files whose path matches this glob (repeatable)")
+    parser.add_argument("--path", action="append", default=[], metavar="PATHSPEC",
+                        help="only read these paths (repeatable; git pathspec syntax)")
     parser.add_argument("--committed", action="store_true",
                         help="read only the commits, not the working copy "
                              "(what a pre-push hook should check)")
@@ -61,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.serve:
             httpd = serve(root, args.base, args.staged, args.host, args.port,
-                          tuple(args.exclude), args.committed)
+                          tuple(args.exclude), args.committed, tuple(args.path))
             print(f"diffbrief  http://{args.host}:{httpd.server_address[1]}  ({root})",
                   flush=True)
             print("ctrl-c to stop", flush=True)
@@ -75,7 +77,8 @@ def main(argv: list[str] | None = None) -> int:
         # Label what was actually read: --staged diffs the index, and calling
         # that "against @{upstream}" is the kind of label that hides a mistake.
         resolved = base_label(root, args.base, args.staged, args.committed)
-        all_files = read_diff(root, args.base, args.staged, committed=args.committed)
+        all_files = read_diff(root, args.base, args.staged, list(args.path) or None,
+                              committed=args.committed)
         files = [file for file in all_files
                  if not excluded(file.path, tuple(args.exclude))]
         data = build(files, str(root), resolved, excluded=len(all_files) - len(files))

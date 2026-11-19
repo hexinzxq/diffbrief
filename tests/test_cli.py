@@ -43,6 +43,26 @@ class RepoCase(unittest.TestCase):
 
 
 class ExitCodeTests(RepoCase):
+    def test_path_reads_only_that_package(self) -> None:
+        # a monorepo: the API package changed, and a secret leaks in the web one
+        (self.repo / "packages/api").mkdir(parents=True)
+        (self.repo / "packages/web").mkdir(parents=True)
+        (self.repo / "packages/api/a.py").write_text("x = 1\n")
+        (self.repo / "packages/web/leak.py").write_text('PASSWORD = "hunter2hunter2"\n')
+        git("add", "-A", cwd=self.repo)
+        code, out = run("-C", str(self.repo), "--path", "packages/api")
+        self.assertEqual(code, 0)
+        self.assertIn("1 file(s)", out)
+        self.assertNotIn("leak.py", out)
+
+    def test_without_path_the_leak_is_seen(self) -> None:
+        (self.repo / "packages/web").mkdir(parents=True)
+        (self.repo / "packages/web/leak.py").write_text('PASSWORD = "hunter2hunter2"\n')
+        git("add", "-A", cwd=self.repo)
+        code, out = run("-C", str(self.repo))
+        self.assertEqual(code, 1)
+        self.assertIn("leak.py", out)
+
     def test_a_clean_tree_is_exit_zero_and_says_so(self) -> None:
         code, out = run("-C", str(self.repo), "--staged")
         self.assertEqual(code, 0)
