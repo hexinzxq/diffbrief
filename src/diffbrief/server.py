@@ -25,7 +25,8 @@ def make_handler(root: Path, base: str | None = None, staged: bool = False,
         all_files = read_diff(root, base, staged, list(paths) or None,
                               committed=committed)
         files = [file for file in all_files if not excluded(file.path, exclude)]
-        return build(files, str(root), resolved, excluded=len(all_files) - len(files))
+        return build(files, str(root), resolved, excluded=len(all_files) - len(files),
+                     only=tuple(paths))
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "diffbrief/0.1"

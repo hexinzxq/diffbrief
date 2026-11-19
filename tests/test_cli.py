@@ -73,6 +73,7 @@ class ExitCodeTests(RepoCase):
         code, out = run("-C", str(self.repo), "--path", "packages/api")
         self.assertEqual(code, 0)
         self.assertIn("1 file(s)", out)
+        self.assertIn("(only packages/api)", out)  # a scoped read must say so
         self.assertNotIn("leak.py", out)
 
     def test_without_path_the_leak_is_seen(self) -> None:

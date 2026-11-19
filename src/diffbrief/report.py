@@ -5,7 +5,8 @@ from .diff import FileDiff
 from .rules import ORDER, Finding, look
 
 
-def build(files: list[FileDiff], root: str, base: str, excluded: int = 0) -> dict:
+def build(files: list[FileDiff], root: str, base: str, excluded: int = 0,
+          only: tuple[str, ...] = ()) -> dict:
     findings = look(files, excluded)
     totals = {name: sum(1 for finding in findings if finding.severity == name) for name in ORDER}
     return {
@@ -13,6 +14,7 @@ def build(files: list[FileDiff], root: str, base: str, excluded: int = 0) -> dic
         "base": base,
         "files": len(files),
         "excluded": excluded,
+        "only": list(only),
         "changed_lines": sum(file.changed() for file in files),
         "findings": [finding.as_json() for finding in findings],
         "totals": totals,
@@ -35,8 +37,9 @@ def render(data: dict) -> str:
         lines.append(f"      {finding['rule']}: {finding['message']}")
         if finding["evidence"]:
             lines.append(f"      {finding['evidence']}")
+    scope = f" (only {', '.join(data['only'])})" if data.get("only") else ""
     if not data["files"]:
-        lines.append(f"no changes against {data['base']} — nothing to read")
+        lines.append(f"no changes against {data['base']}{scope} — nothing to read")
     elif not lines:
         lines.append("clean — nothing worth flagging")
     totals = data["totals"]
@@ -46,5 +49,6 @@ def render(data: dict) -> str:
                f"{totals['warn']} warn, {totals['note']} note")
     if data.get("excluded"):
         summary += f" ({data['excluded']} file(s) skipped by --exclude)"
+    summary += scope
     lines.append(summary)
     return "\n".join(lines)

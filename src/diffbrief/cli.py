@@ -81,7 +81,8 @@ def main(argv: list[str] | None = None) -> int:
                               committed=args.committed)
         files = [file for file in all_files
                  if not excluded(file.path, tuple(args.exclude))]
-        data = build(files, str(root), resolved, excluded=len(all_files) - len(files))
+        data = build(files, str(root), resolved, excluded=len(all_files) - len(files),
+                     only=tuple(args.path))
     except GitError as error:
         print(f"diffbrief: {error}", file=sys.stderr)
         return 2

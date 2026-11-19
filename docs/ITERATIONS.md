@@ -141,3 +141,9 @@
 - **改了什么**：新增 `has_commits(root)`；`read_diff()` 在「不是 `--staged`、也不是显式 `--base`、而仓库一个提交都没有」时抛 `GitError`：`this repository has no commits yet — diffbrief --staged reads the index, otherwise make a first commit`（exit 2）。`--committed` 同理。新增 2 条用例（全新仓库报这句话；全新仓库 `--staged` 照样能查暂存区）。
 - **为什么**：真跑出来的——`git init` 完、文件还没提交时跑 `diffbrief`，用户看到的是 git 自己的 `fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.`：**这是 git 的语法错误，不是一句他能照做的话**。而这时 `--staged` 明明可用，工具却没提。
 - **验证**：66 个测试全过（HEAD 64）；同一个全新仓库现在回那一句、exit 2；`--staged` 照旧报出文件。
+
+### #23 `--path` 读完了要说「只读了这些」
+
+- **改了什么**：`report.build(..., only=())` 把 `--path` 的原样路径记进 JSON 的 `only`，终端摘要末尾加 `(only packages/api)`，空结果那行也带上 `(only …)`。`cli` 与 `server` 都传 `paths`。用例断言摘要里出现 `(only packages/api)`。
+- **为什么**：真跑出来的——`--path packages/api` 的输出是 `1 file(s), 1 changed line(s) against the index — 0 fail, 1 warn`：**看不出这次只读了两个包里的一包**。上一轮 `--exclude` 学到的是「跳过必须说出来」，`--path` 是同一件事的另一种写法，却被漏掉了；读摘要的人会以为整份 diff 都查过。
+- **验证**：66 个测试全过；`--path packages/api` 现在写 `… 0 fail, 1 warn, 0 note (only packages/api)`；`--path packages/nope` 的空结果是 `no changes against the index (only packages/nope) — nothing to read`。
