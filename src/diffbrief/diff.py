@@ -216,6 +216,12 @@ def base_label(root: Path, base: str | None, staged: bool = False,
     return NO_REMOTE if start == EMPTY_TREE else start
 
 
+def changed_names(root: Path, *extra: str) -> list[str]:
+    """Paths git reports for a diff (no content, just names)."""
+    out = _git(["-c", "core.quotePath=false", "diff", "--name-only", *extra], root)
+    return [line for line in out.splitlines() if line]
+
+
 def excluded(path: str, patterns: tuple[str, ...]) -> bool:
     """Whether a path matches one of the --exclude globs.
 

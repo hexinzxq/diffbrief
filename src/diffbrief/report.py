@@ -40,6 +40,8 @@ def render(data: dict) -> str:
     scope = f" (only {', '.join(data['only'])})" if data.get("only") else ""
     if not data["files"]:
         lines.append(f"no changes against {data['base']}{scope} — nothing to read")
+        if data.get("hint"):
+            lines.append(data["hint"])
     elif not lines:
         lines.append("clean — nothing worth flagging")
     totals = data["totals"]

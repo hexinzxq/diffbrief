@@ -153,3 +153,9 @@
 - **改了什么**：`GitError` 分支里判断 `args.json`：给了就向 stdout 打 `{"error": "…"}`（`ensure_ascii=False`），否则维持原来的 `diffbrief: …` 到 stderr；两者都 exit 2。新增 1 条用例（不是仓库时 `--json` 输出可被 `json.loads`）。
 - **为什么**：真跑出来的——在非仓库目录跑 `diffbrief --json`，stdout 是空的、原因只在 stderr，任何 `json.loads(stdout)` 的脚本拿到的是 `JSONDecodeError: Expecting value: line 1 column 1 (char 0)`：**脚本看到的是解析错误，不是「这不是一个仓库」**。`--json` 是给机器读的，出口就得一直是 JSON。
 - **验证**：67 个测试全过（HEAD 66）；同一目录现在输出 `{"error": "fatal: not a git repository (or any of the parent directories): .git"}`、exit 2；不带 `--json` 时仍然只说人话到 stderr。
+
+### #25 「什么都不用看」和「你看的地方没有」是两句话
+
+- **改了什么**：新增 `changed_names(root, *extra)`（`git diff --name-only`）；`--staged` / `--committed` 读出来是空的时候，如果工作区（或索引，反向情形）里其实有改动，报告在 `no changes … — nothing to read` 下面补一行 `note: 1 file(s) changed but not staged — drop --staged to read them`；`data["hint"]` 也进 JSON。新增 2 条用例。
+- **为什么**：真跑出来的——往 `a.py` 追了一行 `PASSWORD = "hunter2hunter2"` 但忘了 `git add`，`diffbrief --staged` 输出 `no changes against the index — nothing to read`、退出 0：**忘掉 `git add` 的那一刻，工具给的是一张健康证明**。它读的确实只有索引，但「这个视图里没有」不该长得像「没有东西可看」。
+- **验证**：69 个测试全过（HEAD 67）；同一个仓库现在多一行 `note: 1 file(s) changed but not staged — drop --staged to read them`；真正干净的树不出现这行，也不影响退出码。

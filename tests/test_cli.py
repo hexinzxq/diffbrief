@@ -44,6 +44,19 @@ class RepoCase(unittest.TestCase):
 
 class ExitCodeTests(RepoCase):
 
+    def test_staged_says_when_the_change_is_only_in_the_working_copy(self) -> None:
+        # the classic: forgot to `git add`, and the index reads clean
+        (self.repo / "app.py").write_text('x = 1\nPASSWORD = "hunter2hunter2"\n')
+        code, out = run("-C", str(self.repo), "--staged")
+        self.assertEqual(code, 0)
+        self.assertIn("nothing to read", out)
+        self.assertIn("not staged", out)
+        self.assertIn("drop --staged", out)
+
+    def test_a_clean_tree_gets_no_hint(self) -> None:
+        code, out = run("-C", str(self.repo), "--staged")
+        self.assertNotIn("drop --staged", out)
+
     def test_json_stays_json_when_the_read_fails(self) -> None:
         # a script doing json.loads(stdout) must get the reason, not a JSONDecodeError
         empty = Path(self.tmp.name) / "empty"
