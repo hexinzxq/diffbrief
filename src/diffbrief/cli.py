@@ -84,7 +84,12 @@ def main(argv: list[str] | None = None) -> int:
         data = build(files, str(root), resolved, excluded=len(all_files) - len(files),
                      only=tuple(args.path))
     except GitError as error:
-        print(f"diffbrief: {error}", file=sys.stderr)
+        # A script that asked for --json parses stdout; an empty stdout turns
+        # "not a git repository" into a JSONDecodeError at the call site.
+        if args.json:
+            print(json.dumps({"error": str(error)}, ensure_ascii=False))
+        else:
+            print(f"diffbrief: {error}", file=sys.stderr)
         return 2
     except OSError as error:
         reason = error.strerror or str(error)

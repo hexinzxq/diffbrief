@@ -43,6 +43,16 @@ class RepoCase(unittest.TestCase):
 
 
 class ExitCodeTests(RepoCase):
+
+    def test_json_stays_json_when_the_read_fails(self) -> None:
+        # a script doing json.loads(stdout) must get the reason, not a JSONDecodeError
+        empty = Path(self.tmp.name) / "empty"
+        empty.mkdir()
+        code, out = run("-C", str(empty), "--json")
+        self.assertEqual(code, 2)
+        data = json.loads(out)
+        self.assertIn("not a git repository", data["error"])
+
     def test_a_repository_with_no_commits_is_a_sentence(self) -> None:
         fresh = Path(self.tmp.name) / "fresh"
         fresh.mkdir()

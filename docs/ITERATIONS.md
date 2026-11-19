@@ -147,3 +147,9 @@
 - **改了什么**：`report.build(..., only=())` 把 `--path` 的原样路径记进 JSON 的 `only`，终端摘要末尾加 `(only packages/api)`，空结果那行也带上 `(only …)`。`cli` 与 `server` 都传 `paths`。用例断言摘要里出现 `(only packages/api)`。
 - **为什么**：真跑出来的——`--path packages/api` 的输出是 `1 file(s), 1 changed line(s) against the index — 0 fail, 1 warn`：**看不出这次只读了两个包里的一包**。上一轮 `--exclude` 学到的是「跳过必须说出来」，`--path` 是同一件事的另一种写法，却被漏掉了；读摘要的人会以为整份 diff 都查过。
 - **验证**：66 个测试全过；`--path packages/api` 现在写 `… 0 fail, 1 warn, 0 note (only packages/api)`；`--path packages/nope` 的空结果是 `no changes against the index (only packages/nope) — nothing to read`。
+
+### #24 `--json` 失败时也给 JSON
+
+- **改了什么**：`GitError` 分支里判断 `args.json`：给了就向 stdout 打 `{"error": "…"}`（`ensure_ascii=False`），否则维持原来的 `diffbrief: …` 到 stderr；两者都 exit 2。新增 1 条用例（不是仓库时 `--json` 输出可被 `json.loads`）。
+- **为什么**：真跑出来的——在非仓库目录跑 `diffbrief --json`，stdout 是空的、原因只在 stderr，任何 `json.loads(stdout)` 的脚本拿到的是 `JSONDecodeError: Expecting value: line 1 column 1 (char 0)`：**脚本看到的是解析错误，不是「这不是一个仓库」**。`--json` 是给机器读的，出口就得一直是 JSON。
+- **验证**：67 个测试全过（HEAD 66）；同一目录现在输出 `{"error": "fatal: not a git repository (or any of the parent directories): .git"}`、exit 2；不带 `--json` 时仍然只说人话到 stderr。
