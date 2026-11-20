@@ -171,3 +171,9 @@
 - **改了什么**：`static/index.html` 补两处——chips 里加虚线 chip「二进制未读 N」，页脚追加 `· 只读 packages/api` 和 `· N 个二进制文件未读：a, b, c`（最多 3 个）；空结果那句从「干净」改成「干净：没有值得停下来看的行。（另有 N 个二进制文件读不了）」。新增 1 条用例（页面源码里同时出现 `data.binary` 与 `data.only`）。
 - **为什么**：真跑出来的——上一轮给命令行加了「二进制没读」和「--path 只读这些」，`/api/report` 里字段也有了，**但页面还是只有 chips 那五个数和一句「干净」**：开着页面看的人恰恰是没看终端的人。同一个事实，三个出口（终端 / JSON / 页面）不能有两个版本。
 - **验证**：71 个测试全过（HEAD 70）；页面自扫 `sloplint.py` → `clean: 0 tell(s) wairable, 0 failures`。
+
+### #28 装钩子时的 `--path` 也要写进脚本
+
+- **改了什么**：`hook.script(exclude, paths)` + `install(root, exclude, paths)` 把 `--path` 逐个 `shlex.quote` 拼进 `exec diffbrief --committed` 那行；`--install-hook` 传 `args.path`，输出注明 `(only: packages/api)`。新增 1 条用例。
+- **为什么**：和上一轮的 `--exclude` 是同一件事的另一个开关，上次只补了一半——真跑出来的：`--install-hook --path packages/api` 回「installed」，脚本里只有 `exec diffbrief --committed`。**monorepo 里这意味着钩子会拿另一个包的 vendored 文件拦你自己的 push**，而现场看到的只是「push 被拒」。
+- **验证**：72 个测试全过（HEAD 71）；同一个仓库重装后脚本是 `exec diffbrief --committed --path packages/api`，再次安装回「matches this version」(only: packages/api)。

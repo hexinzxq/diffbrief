@@ -53,8 +53,12 @@ def main(argv: list[str] | None = None) -> int:
         root = repo_root(Path(args.root).resolve())
         if args.install_hook:
             skips = tuple(args.exclude)
-            target, status = install_hook(root, skips)
-            tail = (f" (skipping: {', '.join(skips)})" if skips else "")
+            scopes = tuple(args.path)
+            target, status = install_hook(root, skips, scopes)
+            tail = "".join([
+                f" (skipping: {', '.join(skips)})" if skips else "",
+                f" (only: {', '.join(scopes)})" if scopes else "",
+            ])
             if status == "new":
                 print(f"installed {target} — every git push now reads the diff first{tail}")
             elif status == "updated":

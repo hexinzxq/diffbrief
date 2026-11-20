@@ -15,6 +15,16 @@ class InstallHookTests(RepoCase):
         # process happens to stand.
         return (raw if raw.is_absolute() else base / raw) / "pre-push"
 
+    def test_paths_are_baked_into_the_script(self) -> None:
+        # a monorepo hook must not block on another package's vendored files
+        code, out = run("-C", str(self.repo), "--install-hook",
+                        "--path", "packages/api", "--path", "packages/db")
+        self.assertEqual(code, 0)
+        self.assertIn("only: packages/api, packages/db", out)
+        text = self.hook().read_text()
+        self.assertIn("--path packages/api", text)
+        self.assertIn("--path packages/db", text)
+
     def test_excludes_are_baked_into_the_script(self) -> None:
         code, out = run("-C", str(self.repo), "--install-hook",
                         "--exclude", "vendor/*", "--exclude", "dist/*")

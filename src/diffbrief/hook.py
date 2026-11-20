@@ -21,7 +21,7 @@ TEMPLATE = """#!/bin/sh
 # Exit 1 stops the push when the report has a `fail`; anything the tool cannot
 # run is not a reason to block a push, so a missing command only prints a note.
 if command -v diffbrief >/dev/null 2>&1; then
-    exec diffbrief --committed{excludes}
+    exec diffbrief --committed{flags}
 fi
 echo "diffbrief: not on PATH, so this hook is not checking anything" >&2
 echo "diffbrief: pip install -e . , or rm $(git rev-parse --git-path hooks)/pre-push" >&2
@@ -29,14 +29,16 @@ exit 0
 """
 
 
-def script(exclude: tuple[str, ...] = ()) -> str:
-    """The hook text for a given set of --exclude globs.
+def script(exclude: tuple[str, ...] = (), paths: tuple[str, ...] = ()) -> str:
+    """The hook text for a given set of --exclude globs and --path scopes.
 
     The flags have to be baked in: a hook runs without a shell history to read,
-    so whatever the tool refuses to look at must already be in the script.
+    so whatever the tool refuses to look at — or only looks at — must already
+    be in the script.
     """
     flags = "".join(f" --exclude {shlex.quote(glob)}" for glob in exclude)
-    return TEMPLATE.replace("{excludes}", flags)
+    flags += "".join(f" --path {shlex.quote(one)}" for one in paths)
+    return TEMPLATE.replace("{flags}", flags)
 
 
 SCRIPT = script()
@@ -55,7 +57,8 @@ def hooks_dir(root: Path) -> Path:
 MARKER = "Installed by `diffbrief --install-hook`"
 
 
-def install(root: Path, exclude: tuple[str, ...] = ()) -> tuple[Path, str]:
+def install(root: Path, exclude: tuple[str, ...] = (),
+            paths: tuple[str, ...] = ()) -> tuple[Path, str]:
     """Write the hook. Returns (path, status) where status is new, updated or unchanged.
 
     An older copy of our own script is rewritten: the script is the part of this
@@ -63,7 +66,7 @@ def install(root: Path, exclude: tuple[str, ...] = ()) -> tuple[Path, str]:
     place means the hook checks something the tool no longer does.
     """
     target = hooks_dir(root) / "pre-push"
-    wanted = script(exclude)
+    wanted = script(exclude, paths)
     if target.exists():
         current = target.read_text()
         if MARKER not in current:
