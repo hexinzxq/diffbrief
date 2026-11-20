@@ -81,9 +81,14 @@ function draw(data) {
     data.excluded
       ? `<span class="chip skip">跳过 <b>${data.excluded}</b>（--exclude）</span>`
       : "",
+    (data.binary && data.binary.length)
+      ? `<span class="chip skip">二进制未读 <b>${data.binary.length}</b></span>`
+      : "",
   ].join("");
   if (!data.findings || !data.findings.length) {
-    list.innerHTML = `<p class="empty">干净：没有值得停下来看的行。</p>`;
+    const blind = (data.binary && data.binary.length)
+      ? `（另有 ${data.binary.length} 个二进制文件读不了）` : "";
+    list.innerHTML = `<p class="empty">干净：没有值得停下来看的行。${esc(blind)}</p>`;
   } else {
     const byFile = new Map();
     for (const finding of data.findings) {
@@ -106,7 +111,10 @@ function draw(data) {
     list.innerHTML = html;
   }
   foot.textContent = `对照 ${data.base} · 仓库 ${data.root}`
-    + (data.excluded ? ` · 跳过 ${data.excluded} 个文件（--exclude）` : "");
+    + (data.only && data.only.length ? ` · 只读 ${data.only.join(", ")}` : "")
+    + (data.excluded ? ` · 跳过 ${data.excluded} 个文件（--exclude）` : "")
+    + ((data.binary && data.binary.length)
+        ? ` · ${data.binary.length} 个二进制文件未读：${data.binary.slice(0, 3).join(", ")}` : "");
 }
 
 async function poll() {

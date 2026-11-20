@@ -165,3 +165,9 @@
 - **改了什么**：`report.build()` 收 `binary` 列表（`file.binary` 的路径），`render()` 在 finding 之后打 `note: N binary file(s) not read — secrets.p12`（最多列 3 个，其余写 and N more），JSON 里也有 `binary` 字段；「clean — nothing worth flagging」按 findings 判，不再被 note 行挤掉。新增 1 条用例。
 - **为什么**：真跑出来的——`printf 'MZ…PASSWORD=hunter2hunter2' > secrets.p12` 暂存后，报告是 `clean — nothing worth flagging`、`1 file(s), 0 changed line(s)`：**一个装着明文密码的二进制文件被默不作声地略过，还被盖了「干净」的章**。文本规则读不了它不是错，假装读过了才是。
 - **验证**：70 个测试全过（HEAD 69）；同一个仓库现在先 `clean — nothing worth flagging`、再 `note: 1 binary file(s) not read — secrets.p12`，退出码不动。
+
+### #27 页面也要说清楚「哪些没读、读了哪些」
+
+- **改了什么**：`static/index.html` 补两处——chips 里加虚线 chip「二进制未读 N」，页脚追加 `· 只读 packages/api` 和 `· N 个二进制文件未读：a, b, c`（最多 3 个）；空结果那句从「干净」改成「干净：没有值得停下来看的行。（另有 N 个二进制文件读不了）」。新增 1 条用例（页面源码里同时出现 `data.binary` 与 `data.only`）。
+- **为什么**：真跑出来的——上一轮给命令行加了「二进制没读」和「--path 只读这些」，`/api/report` 里字段也有了，**但页面还是只有 chips 那五个数和一句「干净」**：开着页面看的人恰恰是没看终端的人。同一个事实，三个出口（终端 / JSON / 页面）不能有两个版本。
+- **验证**：71 个测试全过（HEAD 70）；页面自扫 `sloplint.py` → `clean: 0 tell(s) wairable, 0 failures`。

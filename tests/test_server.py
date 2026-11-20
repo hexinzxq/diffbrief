@@ -13,6 +13,13 @@ from .test_cli import RepoCase, git
 
 class ServerTests(RepoCase):
 
+    def test_the_page_shows_what_was_not_read_and_what_scope(self) -> None:
+        body = urllib.request.urlopen(f"http://127.0.0.1:{self.port}/", timeout=5).read()
+        page = body.decode()
+        self.assertIn("data.binary", page)
+        self.assertIn("data.only", page)
+
+
     def test_binary_files_are_named_as_unread(self) -> None:
         # a .p12 can hold a password in plain bytes; text rules cannot see it
         (self.repo / "secrets.p12").write_bytes(b"MZ\x90\x00PASSWORD=hunter2hunter2\x00")
