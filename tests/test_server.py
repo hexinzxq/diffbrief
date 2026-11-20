@@ -4,12 +4,23 @@ import threading
 import unittest
 import urllib.request
 
+from diffbrief.diff import read_diff
+from diffbrief.report import build, render
 from diffbrief.server import serve
 
 from .test_cli import RepoCase, git
 
 
 class ServerTests(RepoCase):
+
+    def test_binary_files_are_named_as_unread(self) -> None:
+        # a .p12 can hold a password in plain bytes; text rules cannot see it
+        (self.repo / "secrets.p12").write_bytes(b"MZ\x90\x00PASSWORD=hunter2hunter2\x00")
+        git("add", "-A", cwd=self.repo)
+        data = build(read_diff(self.repo, staged=True), str(self.repo), "the index")
+        self.assertEqual(data["binary"], ["secrets.p12"])
+        self.assertIn("binary file(s) not read", render(data))
+
     def setUp(self) -> None:
         super().setUp()
         (self.repo / "app.py").write_text("x = 1\nconsole.log(x);\n")

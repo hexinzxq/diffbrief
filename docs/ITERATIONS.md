@@ -159,3 +159,9 @@
 - **改了什么**：新增 `changed_names(root, *extra)`（`git diff --name-only`）；`--staged` / `--committed` 读出来是空的时候，如果工作区（或索引，反向情形）里其实有改动，报告在 `no changes … — nothing to read` 下面补一行 `note: 1 file(s) changed but not staged — drop --staged to read them`；`data["hint"]` 也进 JSON。新增 2 条用例。
 - **为什么**：真跑出来的——往 `a.py` 追了一行 `PASSWORD = "hunter2hunter2"` 但忘了 `git add`，`diffbrief --staged` 输出 `no changes against the index — nothing to read`、退出 0：**忘掉 `git add` 的那一刻，工具给的是一张健康证明**。它读的确实只有索引，但「这个视图里没有」不该长得像「没有东西可看」。
 - **验证**：69 个测试全过（HEAD 67）；同一个仓库现在多一行 `note: 1 file(s) changed but not staged — drop --staged to read them`；真正干净的树不出现这行，也不影响退出码。
+
+### #26 读不了的二进制文件要说出来
+
+- **改了什么**：`report.build()` 收 `binary` 列表（`file.binary` 的路径），`render()` 在 finding 之后打 `note: N binary file(s) not read — secrets.p12`（最多列 3 个，其余写 and N more），JSON 里也有 `binary` 字段；「clean — nothing worth flagging」按 findings 判，不再被 note 行挤掉。新增 1 条用例。
+- **为什么**：真跑出来的——`printf 'MZ…PASSWORD=hunter2hunter2' > secrets.p12` 暂存后，报告是 `clean — nothing worth flagging`、`1 file(s), 0 changed line(s)`：**一个装着明文密码的二进制文件被默不作声地略过，还被盖了「干净」的章**。文本规则读不了它不是错，假装读过了才是。
+- **验证**：70 个测试全过（HEAD 69）；同一个仓库现在先 `clean — nothing worth flagging`、再 `note: 1 binary file(s) not read — secrets.p12`，退出码不动。

@@ -8,6 +8,7 @@ from .rules import ORDER, Finding, look
 def build(files: list[FileDiff], root: str, base: str, excluded: int = 0,
           only: tuple[str, ...] = ()) -> dict:
     findings = look(files, excluded)
+    binaries = [file.path for file in files if file.binary]
     totals = {name: sum(1 for finding in findings if finding.severity == name) for name in ORDER}
     return {
         "root": root,
@@ -15,6 +16,7 @@ def build(files: list[FileDiff], root: str, base: str, excluded: int = 0,
         "files": len(files),
         "excluded": excluded,
         "only": list(only),
+        "binary": binaries,
         "changed_lines": sum(file.changed() for file in files),
         "findings": [finding.as_json() for finding in findings],
         "totals": totals,
@@ -42,8 +44,12 @@ def render(data: dict) -> str:
         lines.append(f"no changes against {data['base']}{scope} — nothing to read")
         if data.get("hint"):
             lines.append(data["hint"])
-    elif not lines:
+    elif not data["findings"]:
         lines.append("clean — nothing worth flagging")
+    if data.get("binary"):
+        shown = ", ".join(data["binary"][:3])
+        more = f" and {len(data['binary']) - 3} more" if len(data["binary"]) > 3 else ""
+        lines.append(f"note: {len(data['binary'])} binary file(s) not read — {shown}{more}")
     totals = data["totals"]
     lines.append("")
     summary = (f"{data['files']} file(s), {data['changed_lines']} changed line(s) "
