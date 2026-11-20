@@ -222,6 +222,16 @@ def changed_names(root: Path, *extra: str) -> list[str]:
     return [line for line in out.splitlines() if line]
 
 
+def unmatched_patterns(files: list[FileDiff], patterns: tuple[str, ...]) -> list[str]:
+    """The --exclude globs that matched nothing in this diff.
+
+    An unmatched glob stays silent otherwise: the report looks complete, the
+    vendored tree is still in the numbers, and only the count would tell.
+    """
+    return [pattern for pattern in patterns
+            if not any(fnmatch.fnmatch(file.path, pattern) for file in files)]
+
+
 def excluded(path: str, patterns: tuple[str, ...]) -> bool:
     """Whether a path matches one of the --exclude globs.
 

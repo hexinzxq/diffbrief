@@ -113,6 +113,8 @@ function draw(data) {
   foot.textContent = `对照 ${data.base} · 仓库 ${data.root}`
     + (data.only && data.only.length ? ` · 只读 ${data.only.join(", ")}` : "")
     + (data.excluded ? ` · 跳过 ${data.excluded} 个文件（--exclude）` : "")
+    + ((data.unmatched && data.unmatched.length)
+        ? ` · 这些 --exclude 没匹配到东西：${data.unmatched.join(", ")}` : "")
     + ((data.binary && data.binary.length)
         ? ` · ${data.binary.length} 个二进制文件未读：${data.binary.slice(0, 3).join(", ")}` : "");
 }

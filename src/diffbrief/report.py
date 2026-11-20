@@ -6,7 +6,7 @@ from .rules import ORDER, Finding, look
 
 
 def build(files: list[FileDiff], root: str, base: str, excluded: int = 0,
-          only: tuple[str, ...] = ()) -> dict:
+          only: tuple[str, ...] = (), unmatched: tuple[str, ...] = ()) -> dict:
     findings = look(files, excluded)
     binaries = [file.path for file in files if file.binary]
     totals = {name: sum(1 for finding in findings if finding.severity == name) for name in ORDER}
@@ -17,6 +17,7 @@ def build(files: list[FileDiff], root: str, base: str, excluded: int = 0,
         "excluded": excluded,
         "only": list(only),
         "binary": binaries,
+        "unmatched": list(unmatched),
         "changed_lines": sum(file.changed() for file in files),
         "findings": [finding.as_json() for finding in findings],
         "totals": totals,
@@ -46,6 +47,13 @@ def render(data: dict) -> str:
             lines.append(data["hint"])
     elif not data["findings"]:
         lines.append("clean — nothing worth flagging")
+    for pattern in data.get("unmatched", []):
+        # `--exclude vendor` matches no path: git prints `vendor/lib.py`, so a
+        # directory has to be spelled `vendor/*` — and that is worth a sentence.
+        looks_like_a_dir = "/" not in pattern.strip("*/")
+        lines.append(f"note: --exclude {pattern} matched nothing in this diff"
+                     + (" — a directory needs `" + pattern.rstrip("/") + "/*`"
+                        if looks_like_a_dir else ""))
     if data.get("binary"):
         shown = ", ".join(data["binary"][:3])
         more = f" and {len(data['binary']) - 3} more" if len(data["binary"]) > 3 else ""

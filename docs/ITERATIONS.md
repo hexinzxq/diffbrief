@@ -177,3 +177,9 @@
 - **改了什么**：`hook.script(exclude, paths)` + `install(root, exclude, paths)` 把 `--path` 逐个 `shlex.quote` 拼进 `exec diffbrief --committed` 那行；`--install-hook` 传 `args.path`，输出注明 `(only: packages/api)`。新增 1 条用例。
 - **为什么**：和上一轮的 `--exclude` 是同一件事的另一个开关，上次只补了一半——真跑出来的：`--install-hook --path packages/api` 回「installed」，脚本里只有 `exec diffbrief --committed`。**monorepo 里这意味着钩子会拿另一个包的 vendored 文件拦你自己的 push**，而现场看到的只是「push 被拒」。
 - **验证**：72 个测试全过（HEAD 71）；同一个仓库重装后脚本是 `exec diffbrief --committed --path packages/api`，再次安装回「matches this version」(only: packages/api)。
+
+### #29 `--exclude` 没匹配到东西也要说
+
+- **改了什么**：`diff.unmatched_patterns(files, patterns)` 找出一个都没匹配上的 glob；`report.build(..., unmatched=())` 把它放进 JSON `unmatched`，`render()` 逐条打 `note: --exclude vendor matched nothing in this diff — a directory needs \`vendor/*\``；cli 与 server 都传，页面页脚也列出。新增 1 条用例。
+- **为什么**：真跑出来的——`diffbrief --base f33cd59~1 --exclude vendor` 输出「103 file(s), 8562 changed line(s)」，没有一句提示 `vendor` 其实一个文件都没排除（git 打的是 `vendor/lib.py`，目录要写 `vendor/*`）。**排除没生效时报告看起来是「已经排除过」的样子**，比没有开关更糟。
+- **验证**：73 个测试全过（HEAD 72）；同一条命令现在多一行 note 并指出目录写法；`docs`/README 未改（用法块已有 `vendor/*` 示例）。

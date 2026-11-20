@@ -1,7 +1,7 @@
 """The parser is the only place that reads git's own text."""
 import unittest
 
-from diffbrief.diff import base_label, parse, read_diff
+from diffbrief.diff import unmatched_patterns, base_label, parse, read_diff
 from tests.test_cli import RepoCase, git
 
 TWO_FILES = '''diff --git a/src/app.py b/src/app.py

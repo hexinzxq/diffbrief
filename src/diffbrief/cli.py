@@ -10,8 +10,8 @@ import json
 import sys
 from pathlib import Path
 
-from .diff import (GitError, base_label, changed_names, excluded, read_diff, repo_root,
-                       resolve_base)
+from .diff import (GitError, base_label, changed_names, excluded, read_diff,
+                   repo_root, resolve_base, unmatched_patterns)
 from .hook import install as install_hook
 from .report import build, render, worst
 from .server import serve
@@ -86,8 +86,10 @@ def main(argv: list[str] | None = None) -> int:
                               committed=args.committed)
         files = [file for file in all_files
                  if not excluded(file.path, tuple(args.exclude))]
+        skips = tuple(args.exclude)
         data = build(files, str(root), resolved, excluded=len(all_files) - len(files),
-                     only=tuple(args.path))
+                     only=tuple(args.path),
+                     unmatched=tuple(unmatched_patterns(all_files, skips)))
         if not files:
             # "nothing to read" is about the thing asked for, and saying only
             # that makes a forgotten `git add` look like a clean tree.

@@ -44,6 +44,17 @@ class RepoCase(unittest.TestCase):
 
 class ExitCodeTests(RepoCase):
 
+    def test_an_exclude_that_matches_nothing_is_named(self) -> None:
+        # `--exclude vendor` matches no path: git prints vendor/lib.py
+        (self.repo / "vendor").mkdir()
+        (self.repo / "vendor" / "lib.py").write_text("PASSWORD = \"hunter2hunter2\"\n")
+        git("add", "-A", cwd=self.repo)
+        code, out = run("-C", str(self.repo), "--staged", "--exclude", "vendor")
+        self.assertEqual(code, 1)
+        self.assertIn("--exclude vendor matched nothing", out)
+        self.assertIn("a directory needs `vendor/*`", out)
+
+
     def test_staged_says_when_the_change_is_only_in_the_working_copy(self) -> None:
         # the classic: forgot to `git add`, and the index reads clean
         (self.repo / "app.py").write_text('x = 1\nPASSWORD = "hunter2hunter2"\n')

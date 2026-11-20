@@ -10,7 +10,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .diff import base_label, excluded, read_diff, repo_root
+from .diff import base_label, excluded, read_diff, repo_root, unmatched_patterns
 from .report import build
 
 STATIC = Path(__file__).parent / "static"
