@@ -183,3 +183,9 @@
 - **改了什么**：`diff.unmatched_patterns(files, patterns)` 找出一个都没匹配上的 glob；`report.build(..., unmatched=())` 把它放进 JSON `unmatched`，`render()` 逐条打 `note: --exclude vendor matched nothing in this diff — a directory needs \`vendor/*\``；cli 与 server 都传，页面页脚也列出。新增 1 条用例。
 - **为什么**：真跑出来的——`diffbrief --base f33cd59~1 --exclude vendor` 输出「103 file(s), 8562 changed line(s)」，没有一句提示 `vendor` 其实一个文件都没排除（git 打的是 `vendor/lib.py`，目录要写 `vendor/*`）。**排除没生效时报告看起来是「已经排除过」的样子**，比没有开关更糟。
 - **验证**：73 个测试全过（HEAD 72）；同一条命令现在多一行 note 并指出目录写法；`docs`/README 未改（用法块已有 `vendor/*` 示例）。
+
+### #30 报告按行号读，不按规则顺序读
+
+- **改了什么**：`report.build()` 在 `look()` 之后按 `(path, line or 大数, severity)` 排序——文件内自上而下，整文件的结论（`tests-missing` 这种没有行号的）排在行级之后。新增 1 条用例（同一文件里 TODO 在 2 行、密钥 3 行、`console.log` 4 行，报告必须 2→3→4）。
+- **为什么**：真跑出来的——一个文件同时命中 `secret-literal(:3)`、`tests-missing(无行号)`、`debug-statement(:4)`、`todo-added(:2)`，报告顺序是 3 → 无行号 → 4 → 2：**读的人得在报告里来回跳着找行**。规则怎么实现是工具的事，报告怎么读是人的事。
+- **验证**：74 个测试全过（HEAD 73）；同一个 fixture 现在是 2、3、4、无行号，退出码不变。

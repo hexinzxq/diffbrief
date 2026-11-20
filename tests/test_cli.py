@@ -44,6 +44,17 @@ class RepoCase(unittest.TestCase):
 
 class ExitCodeTests(RepoCase):
 
+    def test_findings_follow_the_lines_top_to_bottom(self) -> None:
+        # rules fire in their own order; the report has to read like the file
+        (self.repo / "a.py").write_text(
+            "a = 1\n# TODO: later\nPASSWORD = \"hunter2hunter2\"\nconsole.log(1)\n")
+        git("add", "-A", cwd=self.repo)
+        code, out = run("-C", str(self.repo), "--staged")
+        self.assertEqual(code, 1)
+        order = [line.split()[1] for line in out.splitlines() if line.startswith(("FAIL", "WARN", "NOTE"))]
+        self.assertEqual(order[:3], ["a.py:2", "a.py:3", "a.py:4"])
+
+
     def test_an_exclude_that_matches_nothing_is_named(self) -> None:
         # `--exclude vendor` matches no path: git prints vendor/lib.py
         (self.repo / "vendor").mkdir()

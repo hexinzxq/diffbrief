@@ -8,6 +8,12 @@ from .rules import ORDER, Finding, look
 def build(files: list[FileDiff], root: str, base: str, excluded: int = 0,
           only: tuple[str, ...] = (), unmatched: tuple[str, ...] = ()) -> dict:
     findings = look(files, excluded)
+    # Read a file top to bottom: rules fire in their own order, but a person
+    # scrolling the report wants the lines in the order they appear, with the
+    # whole-file verdicts after them.
+    findings.sort(key=lambda finding: (finding.path,
+                                       10 ** 9 if finding.line is None else finding.line,
+                                       ORDER[finding.severity]))
     binaries = [file.path for file in files if file.binary]
     totals = {name: sum(1 for finding in findings if finding.severity == name) for name in ORDER}
     return {
