@@ -44,6 +44,14 @@ class RepoCase(unittest.TestCase):
 
 class ExitCodeTests(RepoCase):
 
+    def test_a_path_that_matches_nothing_is_named(self) -> None:
+        # a typo in --path looks exactly like an empty change set otherwise
+        git("add", "-A", cwd=self.repo)
+        code, out = run("-C", str(self.repo), "--staged", "--path", "packages/ap")
+        self.assertEqual(code, 0)
+        self.assertIn("--path packages/ap matched nothing", out)
+
+
     def test_findings_follow_the_lines_top_to_bottom(self) -> None:
         # rules fire in their own order; the report has to read like the file
         (self.repo / "a.py").write_text(

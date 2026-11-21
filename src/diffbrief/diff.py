@@ -216,9 +216,26 @@ def base_label(root: Path, base: str | None, staged: bool = False,
     return NO_REMOTE if start == EMPTY_TREE else start
 
 
-def changed_names(root: Path, *extra: str) -> list[str]:
-    """Paths git reports for a diff (no content, just names)."""
-    out = _git(["-c", "core.quotePath=false", "diff", "--name-only", *extra], root)
+def changed_names(root: Path, *paths: str) -> list[str]:
+    """Paths git reports for a diff (no content, just names).
+
+    `--` matters: without it a typo like `packages/ap` is read as a revision and
+    git answers with "ambiguous argument", which is a sentence about git, not
+    about the path you meant.
+    """
+    args = ["-c", "core.quotePath=false", "diff", "--name-only"]
+    if paths:
+        args.extend(["--", *paths])
+    out = _git(args, root)
+    return [line for line in out.splitlines() if line]
+
+
+def staged_names(root: Path, *paths: str) -> list[str]:
+    """Paths staged in the index (what `--staged` would read)."""
+    args = ["-c", "core.quotePath=false", "diff", "--name-only", "--cached"]
+    if paths:
+        args.extend(["--", *paths])
+    out = _git(args, root)
     return [line for line in out.splitlines() if line]
 
 

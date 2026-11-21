@@ -201,3 +201,9 @@
 - **改了什么**：`SECRET_NAME` 与 `SECRET_BARE` 的名字部分从 `\b(password|token|…)` 改成 `(?:[a-z0-9]+[_-])*(?:password|token|…)`——`db_password`、`auth_token`、`client_secret` 这类前缀写法现在都算；引用值与非引用值都覆盖。新增 1 条用例（yaml 的 `auth_token: "…"`、`.env` 的 `DB_PASSWORD=…`）。
 - **为什么**：真跑出来的——`values.yaml` 里 `auth_token: "abcdefgh12345678"`、`db_password: "supersecretvalue99"`，加 `.env` 里 `DB_PASSWORD=hunter2hunter2`，三个一起暂存，报告是 `clean — nothing worth flagging`。根因是 `\b` 与下划线：下划线算单词字符，`_token` 前面没有词边界，正则根本匹配不上。**配置里根本不会把密钥命名为光秃秃的 `token`**，这个边界等于把最常见的写法排除在外。
 - **验证**：76 个测试全过（HEAD 75）；同一组文件现在 3 条 fail、逐行打码，`.env` 的 `DB_PASSWORD` 也命中；`password: ${DB_PASSWORD}` / `api_key: <your-key>` 这类占位值用例仍然不报。
+
+### #33 `--path` 拼错时不再吐 git 的「ambiguous argument」
+
+- **改了什么**：`changed_names(root, *paths)` 现在显式加 `--` 再放路径（之前把 `packages/api` 当修订号传）；新增 `staged_names(root, *paths)` 供「staged 但工作区没有」那条提示用（原来把 `--cached` 当路径塞进 `changed_names`）；`files` 为空且给了 `--path` 时，若该 pathspec 在仓库里哪儿都没命中，输出 `note: --path packages/ap matched nothing in this repository`。新增 1 条用例。
+- **为什么**：真跑出来的——`--staged --path packages/api`（目录不存在）直接回 `diffbrief: fatal: ambiguous argument 'packages/api': unknown revision or path not in the working tree.`；那是 git 在抱怨自己被当成了修订号，用户看到的是「工具坏了」而不是「你路径写错了」。
+- **验证**：77 个测试全过（HEAD 76）；同一条命令现在 `note: --path packages/api matched nothing in this repository` + `0 file(s)` 摘要，退出码 0；正常 `--path` 与「忘记 git add」提示的用例不受影响。

@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 from .diff import (GitError, base_label, changed_names, excluded, read_diff,
-                   repo_root, resolve_base, unmatched_patterns)
+                   repo_root, resolve_base, staged_names, unmatched_patterns)
 from .hook import install as install_hook
 from .report import build, render, worst
 from .server import serve
@@ -101,10 +101,18 @@ def main(argv: list[str] | None = None) -> int:
                     data["hint"] = (f"note: {len(others)} file(s) changed but not "
                                     f"{word} — drop {flag} to read them")
             else:
-                others = changed_names(root, "--cached", *(args.path or []))
+                others = staged_names(root, *(args.path or []))
                 if others:
                     data["hint"] = (f"note: {len(others)} file(s) staged but not in the "
                                     "working copy — add --staged")
+            if args.path and not data.get("hint"):
+                # A typo in --path is indistinguishable from an empty change set
+                # unless the pathspec is checked on its own.
+                anywhere = changed_names(root, *(args.path or [])) or staged_names(root, *(args.path or []))
+                if not anywhere:
+                    data["hint"] = ("note: --path "
+                                    + ", ".join(args.path)
+                                    + " matched nothing in this repository")
     except GitError as error:
         # A script that asked for --json parses stdout; an empty stdout turns
         # "not a git repository" into a JSONDecodeError at the call site.
