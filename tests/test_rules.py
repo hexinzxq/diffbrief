@@ -154,6 +154,13 @@ class RenameTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertIn("secret-literal", rules(look([added_file(path, line)])))
 
+    def test_a_prefixed_secret_name_is_still_a_secret(self) -> None:
+        # db_password / auth_token is how the name is actually written
+        self.assertIn("secret-literal",
+                      rules(look([added_file("values.yaml", 'auth_token: "abcdefgh12345678"')])))
+        self.assertIn("secret-literal",
+                      rules(look([added_file(".env", "DB_PASSWORD=hunter2hunter2")])))
+
     def test_a_reference_in_a_config_file_is_not_a_secret(self) -> None:
         for line in ("password: ${DB_PASSWORD}", "api_key: {{ .Values.key }}",
                      "password: <your-password>", "token: CHANGE_ME_NOW"):

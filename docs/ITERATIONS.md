@@ -195,3 +195,9 @@
 - **改了什么**：`large-deletion` 条件加 `and not file.deleted`——`git rm` 掉一个 ≥30 行的文件不再报「40 lines removed and 0 added — was this on purpose?」。新增 1 条用例（`deleted=True` 的 40 行文件 → 无 finding），原有的「部分删除仍报」用例不动。
 - **为什么**：真跑出来的——`git rm big.py`（40 行）直接吃一个 WARN，而删文件这件事本身就在文件列表里写着，不需要再问一遍「是故意的吗」。删一整条目录时会是几十条同样的 WARN，比不报更糟。
 - **验证**：75 个测试全过（HEAD 74）；同一个 `git rm` 现在 `clean — nothing worth flagging`，而部分删除的用例仍然报 `large-deletion`。
+
+### #32 `db_password` / `auth_token` 也是密钥名
+
+- **改了什么**：`SECRET_NAME` 与 `SECRET_BARE` 的名字部分从 `\b(password|token|…)` 改成 `(?:[a-z0-9]+[_-])*(?:password|token|…)`——`db_password`、`auth_token`、`client_secret` 这类前缀写法现在都算；引用值与非引用值都覆盖。新增 1 条用例（yaml 的 `auth_token: "…"`、`.env` 的 `DB_PASSWORD=…`）。
+- **为什么**：真跑出来的——`values.yaml` 里 `auth_token: "abcdefgh12345678"`、`db_password: "supersecretvalue99"`，加 `.env` 里 `DB_PASSWORD=hunter2hunter2`，三个一起暂存，报告是 `clean — nothing worth flagging`。根因是 `\b` 与下划线：下划线算单词字符，`_token` 前面没有词边界，正则根本匹配不上。**配置里根本不会把密钥命名为光秃秃的 `token`**，这个边界等于把最常见的写法排除在外。
+- **验证**：76 个测试全过（HEAD 75）；同一组文件现在 3 条 fail、逐行打码，`.env` 的 `DB_PASSWORD` 也命中；`password: ${DB_PASSWORD}` / `api_key: <your-key>` 这类占位值用例仍然不报。

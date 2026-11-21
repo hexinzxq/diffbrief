@@ -13,8 +13,10 @@ from .diff import FileDiff
 # Most severe first: the CLI sorts by this and the page filters on it.
 ORDER = {"fail": 0, "warn": 1, "note": 2}
 
+# `db_password`, `auth_token`, `client_secret` are the names people actually
+# write; a word boundary before "password" hides them behind an underscore.
 SECRET_NAME = re.compile(
-    r"(?i)\b(api[_-]?key|apikey|secret|token|password|passwd|pwd|access[_-]?key)\b"
+    r"(?i)(?:[a-z0-9]+[_-])*(api[_-]?key|apikey|secret|token|password|passwd|pwd|access[_-]?key)\b"
     r"\s*[:=]\s*[\"'][^\"']{8,}[\"']"
 )
 # A template config says CHANGE_ME, <token>, ${API_KEY}: those are instructions
@@ -65,7 +67,7 @@ TEMPLATE = re.compile(
 # `spring.datasource.password=…`. The quoted-key rule above never sees those.
 CONFIG = re.compile(r"\.(ya?ml|ini|properties|toml|cfg|conf|env)$", re.I)
 SECRET_BARE = re.compile(
-    r"(?i)\b(?:api[_-]?key|apikey|secret|token|password|passwd|pwd|access[_-]?key)\b"
+    r"(?i)(?:[a-z0-9]+[_-])*(?:api[_-]?key|apikey|secret|token|password|passwd|pwd|access[_-]?key)\b"
     r"\s*[:=]\s*([^\s\"'#]{8,})\s*$")
 TESTING = {"py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "rb", "kt", "swift", "php"}
 TESTISH = re.compile(
