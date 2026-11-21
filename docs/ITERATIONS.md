@@ -189,3 +189,9 @@
 - **改了什么**：`report.build()` 在 `look()` 之后按 `(path, line or 大数, severity)` 排序——文件内自上而下，整文件的结论（`tests-missing` 这种没有行号的）排在行级之后。新增 1 条用例（同一文件里 TODO 在 2 行、密钥 3 行、`console.log` 4 行，报告必须 2→3→4）。
 - **为什么**：真跑出来的——一个文件同时命中 `secret-literal(:3)`、`tests-missing(无行号)`、`debug-statement(:4)`、`todo-added(:2)`，报告顺序是 3 → 无行号 → 4 → 2：**读的人得在报告里来回跳着找行**。规则怎么实现是工具的事，报告怎么读是人的事。
 - **验证**：74 个测试全过（HEAD 73）；同一个 fixture 现在是 2、3、4、无行号，退出码不变。
+
+### #31 整文件删除不算「大段删除」
+
+- **改了什么**：`large-deletion` 条件加 `and not file.deleted`——`git rm` 掉一个 ≥30 行的文件不再报「40 lines removed and 0 added — was this on purpose?」。新增 1 条用例（`deleted=True` 的 40 行文件 → 无 finding），原有的「部分删除仍报」用例不动。
+- **为什么**：真跑出来的——`git rm big.py`（40 行）直接吃一个 WARN，而删文件这件事本身就在文件列表里写着，不需要再问一遍「是故意的吗」。删一整条目录时会是几十条同样的 WARN，比不报更糟。
+- **验证**：75 个测试全过（HEAD 74）；同一个 `git rm` 现在 `clean — nothing worth flagging`，而部分删除的用例仍然报 `large-deletion`。

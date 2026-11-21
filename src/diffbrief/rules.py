@@ -132,7 +132,10 @@ def look(files: list[FileDiff], excluded: int = 0) -> list[Finding]:
                     file.path, line.new_no, "note", "todo-added",
                     "a TODO/FIXME is entering the tree", text.strip()[:120]))
         removed, added = len(file.removed()), len(file.added())
-        if removed >= BIG_DELETION and added <= 5 and not LOCKFILES.search(file.path):
+        # A whole file removed is the point of the change, not a surprise inside
+        # it: `git rm big.py` is not "40 lines vanished, were you looking?".
+        if (removed >= BIG_DELETION and added <= 5 and not file.deleted
+                and not LOCKFILES.search(file.path)):
             findings.append(Finding(
                 file.path, None, "warn", "large-deletion",
                 f"{removed} lines removed and {added} added — was this on purpose?",

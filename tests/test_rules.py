@@ -166,6 +166,12 @@ class ShapeTests(unittest.TestCase):
                          added_file("package-lock.json", "x", removed=40)])
         self.assertEqual(rules(findings), ["large-deletion"])
 
+    def test_a_whole_file_removed_is_not_a_large_deletion(self) -> None:
+        # `git rm big.py` is the change, not a surprise inside one
+        file = added_file("src/big.py", removed=40)
+        file.deleted = True
+        self.assertEqual(rules(look([file])), [])
+
     def test_lockfile_churn_is_a_note_not_a_deletion(self) -> None:
         file = added_file("yarn.lock", *[f"entry {i}" for i in range(210)])
         self.assertEqual(rules(look([file])), ["lockfile-churn"])
